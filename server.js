@@ -22,6 +22,7 @@ app.use('/api/auth', require('./routes/auth'));          // login + signup (MySQ
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/sensor-data', sensor.router);
 app.use('/api/device', sensor.deviceRouter);
+app.use('/api/rates', require('./routes/rates'));      // Meralco monthly rate (Tavily)
 
 // ----------------------------------------------------
 // Dashboard summary (login required; user comes from the token)
@@ -109,3 +110,4 @@ app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => console.log(`Server running on http://localhost:${PORT}`));
+require('./services/meralcoRates').startScheduler();

@@ -19,7 +19,7 @@ a{color:var(--accent)}
 /* layout */
 .wrap{max-width:860px;margin:0 auto;padding:32px 20px 120px;display:grid;gap:32px}
 .hero h1{font-size:clamp(3rem,13vw,5.5rem);font-weight:800;letter-spacing:-.04em;line-height:1.05;margin:4px 0}
-.metrics{display:grid;grid-template-columns:repeat(3,1fr)}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr)}
 .metrics div{padding:0 12px;border-left:1px solid var(--line)}.metrics div:first-child{padding-left:0;border:0}
 .metrics span{display:block;font-size:clamp(1.4rem,5vw,2rem);font-weight:700;letter-spacing:-.02em}
 .metrics small{color:var(--muted);font-size:.8rem}

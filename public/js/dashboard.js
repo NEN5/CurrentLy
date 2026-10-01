@@ -36,11 +36,10 @@ document.querySelectorAll('[data-range]').forEach(b => b.addEventListener('click
 // keeps POSTing to /api/sensor-data (timeout is ONLINE_TIMEOUT_MS in data/store.js).
 async function loadStatus() {
   const d = await API.get('/device/status');
-  const labels = { online: 'Online', offline: 'Offline', simulated: 'Simulated' };
+  const labels = { online: 'Online', offline: 'Offline' };
   $('status').dataset.state = d.state;
   $('statusText').textContent = labels[d.state];
   $('status').title = d.lastSeen ? `Last seen ${Math.round((d.serverTime - d.lastSeen) / 1000)} seconds ago` : 'No data received yet';
-  $('mockToggle').checked = d.state === 'simulated';
 }
 
 // ---- Settings ----------------------------------------------------------------
@@ -48,10 +47,6 @@ $('rate').addEventListener('change', async e => {
   try { await API.put('/settings', { rate: Number(e.target.value) }); $('rateMsg').textContent = ''; }
   catch (err) { $('rateMsg').textContent = err.message; }
   loadSummary();
-});
-$('mockToggle').addEventListener('change', async e => {
-  await API.post('/sensor-data/mock', { enabled: e.target.checked });
-  loadStatus(); loadSummary();
 });
 $('logout').addEventListener('click', () => { localStorage.clear(); location.href = '/login.html'; });
 
@@ -72,3 +67,18 @@ function calc() {
 loadSummary(); loadStatus();
 setInterval(loadSummary, 5000);
 setInterval(loadStatus, 10000);
+
+// Simulated data no longer exists: hide the old toggle if it is still in index.html.
+$('mockToggle')?.closest('label')?.remove();
+
+// ---- Meralco monthly rate (from /api/rates/meralco; defaults to September 2026) ----
+async function loadMeralcoRate() {
+  const el = $('rateKwh'); if (!el) return;
+  try {
+    const r = await API.get('/rates/meralco');
+    el.textContent = r.overall_rate_per_kwh.toFixed(4);
+    el.title = `Meralco ${r.billing_period} (${r.rate_change.direction} of ₱${r.rate_change.amount_per_kwh.toFixed(4)}/kWh)`;
+  } catch { /* keep the value already in the HTML */ }
+}
+loadMeralcoRate();
+setInterval(loadMeralcoRate, 6 * 3600 * 1000);
