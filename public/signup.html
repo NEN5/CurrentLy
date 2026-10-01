@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign up · Bill Estimate</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth">
+  <aside class="auth-brand">
+    <div class="auth-logo"><i aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#0B3D36" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></i>Bill Estimate</div>
+    <div class="auth-hero">
+      <small>Estimated this month</small>
+      <div class="hero-fig"><strong id="heroBill">₱2,480</strong><span class="delta" id="heroDelta" data-dir="up"><i aria-hidden="true">▲</i><b>0.0%</b></span></div>
+      <p>Keep your household electric bill in view, in real time.</p>
+      <svg class="live-chart" id="liveChart" viewBox="0 0 520 220" aria-hidden="true">
+        <defs><linearGradient id="lcFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3CC4AE" stop-opacity=".35"/><stop offset="1" stop-color="#3CC4AE" stop-opacity="0"/></linearGradient></defs>
+        <g class="lc-grid"><path d="M0 55H520M0 110H520M0 165H520"/></g>
+        <path class="lc-area" fill="url(#lcFill)"/>
+        <path class="lc-line" fill="none" stroke="#7EE0CB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle class="lc-halo" r="9" fill="#7EE0CB"/>
+        <circle class="lc-dot" r="4.5" fill="#fff"/>
+      </svg>
+      <span class="hero-note">Daily kWh · sample data</span>
+    </div>
+  </aside>
+  <main class="auth-main">
+    <div class="auth-box">
+      <header><h1>Create your account</h1><p class="muted">Link your meter and start tracking.</p></header>
+      <form id="authForm" data-page="signup" novalidate>
+        <p id="formError" class="field-error form-error" role="alert"></p>
+        <label for="mac">Device MAC address
+          <input id="mac" name="mac" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="17" placeholder="AA:BB:CC:DD:EE:FF" aria-describedby="mac-err">
+          <span class="hint">Printed on your ESP32 meter.</span>
+          <span class="field-error" id="mac-err" role="alert"></span></label>
+        <label for="email">Email
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" aria-describedby="email-err">
+          <span class="field-error" id="email-err" role="alert"></span></label>
+        <label for="password">Password
+          <span class="pw"><input id="password" name="password" type="password" autocomplete="new-password" placeholder="At least 6 characters" aria-describedby="password-err"><button type="button" class="pw-toggle" aria-label="Show password" aria-pressed="false">Show</button></span>
+          <span class="field-error" id="password-err" role="alert"></span></label>
+        <button id="submitBtn" class="primary" type="submit">Create account</button>
+      </form>
+      <div class="auth-alt">
+        <span>Already have an account? <a href="login.html">Log in</a></span>
+        <a href="index.html" id="guest" class="guest">Continue without an account</a>
+      </div>
+    </div>
+  </main>
+  <script src="js/brand.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

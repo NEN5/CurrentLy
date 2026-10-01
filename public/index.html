@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Electric Bill Estimate</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="nav">
+    <strong class="brand">Dashboard | Bill Estimate</strong>
+    <div class="nav-right">
+      <!-- ESP32 INTEGRATION: state comes from GET /api/device/status -->
+      <span id="status" class="pill" data-state="offline" title=""><i></i><span id="statusText">Offline</span></span>
+      <button id="logout" class="link">Log out</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <p class="muted">Estimated bill this month</p>
+      <h1 id="bill">₱0.00</h1>
+      <p id="projected" class="muted">Projected for the month: ₱0.00</p>
+    </section>
+
+    <section class="metrics" aria-label="Usage">
+      <div><span id="livePower">—</span><small>watts right now</small></div>
+      <div><span id="todayKwh">0.0</span><small>kWh today</small></div>
+      <div><span id="monthKwh">0.0</span><small>kWh this month</small></div>
+      <div><span id="rateKwh">0.0</span><small>Rate per kWh</small></div>
+      
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>Usage trend</h2><p id="chartHint" class="muted">Last 30 days</p></div>
+        <div class="seg">
+          <button data-range="daily" aria-pressed="true">Daily</button>
+          <button data-range="monthly" aria-pressed="false">Monthly</button>
+        </div>
+      </div>
+      <p id="readout" class="readout muted">Hover or tap the chart for details</p>
+      <svg id="chart" role="img" aria-label="Energy usage in kWh"></svg>
+    </section>
+
+    <section class="panel settings">
+      <h2>Settings</h2>
+      <label class="row">Electricity rate per kWh
+        <span class="rate"><span id="rateUnit">₱</span><input id="rate" type="number" min="0.01" step="0.01" inputmode="decimal"></span>
+      </label>
+      <p id="rateMsg" class="error" role="alert"></p>
+      <label class="row">Use simulated meter data
+        <input id="mockToggle" type="checkbox" class="switch">
+      </label>
+    </section>
+  </main>
+
+  <!-- Floating appliance calculator -->
+  <button id="calcOpen" class="fab" aria-label="Open appliance calculator">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7.5h7M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg>
+  </button>
+
+  <dialog id="calc">
+    <div class="dlg-head"><h2>Appliance calculator</h2><button id="calcClose" class="link" aria-label="Close">✕</button></div>
+    <label>Appliance name<input id="name" type="text" placeholder="Air conditioner"></label>
+    <div class="two">
+      <label>Wattage (W)<input id="watts" type="number" min="0" inputmode="decimal" value="1000"></label>
+      <label>Hours per day<input id="hours" type="number" min="0" max="24" step="0.5" inputmode="decimal" value="8"></label>
+    </div>
+    <p class="muted">Rate: <span id="calcRate">₱12 per kWh</span></p>
+    <dl class="results">
+      <div><dt>Per day</dt><dd><b id="rDay">₱0.00</b> <small><span id="rDayKwh">0.0</span> kWh</small></dd></div>
+      <div><dt>Per month (30 days)</dt><dd><b id="rMonth">₱0.00</b> <small><span id="rMonthKwh">0.0</span> kWh</small></dd></div>
+    </dl>
+  </dialog>
+
+  <script src="js/api.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

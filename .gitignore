@@ -1,0 +1,10 @@
+# Environment variables (contains DB passwords, secret keys)
+.env
+.env.local
+.env.development
+
+# Node dependencies
+node_modules/
+
+# Logs
+*.log
