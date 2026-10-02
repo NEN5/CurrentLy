@@ -12,8 +12,9 @@ if (!process.env.JWT_SECRET) {
 }
 
 const app = express();
+app.set('trust proxy', 1); // Render sits behind a proxy; needed for per-IP rate limiting
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '4kb' }));
 
 // ----------------------------------------------------
 // Routes the frontend already uses
@@ -22,6 +23,7 @@ app.use('/api/auth', require('./routes/auth'));          // login + signup (MySQ
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/sensor-data', sensor.router);
 app.use('/api/device', sensor.deviceRouter);
+app.use('/api/device', require('./routes/pairing'));   // pair-code + claim
 app.use('/api/rates', require('./routes/rates'));      // Meralco monthly rate (Tavily)
 
 // ----------------------------------------------------
@@ -78,29 +80,9 @@ app.post('/api/calculator/estimate', (req, res) => {
 });
 
 // ----------------------------------------------------
-// ESP32 telemetry (authenticated by the device's api_key)
+// ESP32 telemetry: legacy alias of POST /api/sensor-data (same handler)
 // ----------------------------------------------------
-app.post('/api/telemetry', async (req, res) => {
-  try {
-    const api_key = req.body.api_key || req.headers['x-api-key'];
-    const { voltage, current_amps, active_power_watts, total_kwh } = req.body;
-
-    const [devices] = await db.execute('SELECT id FROM devices WHERE api_key = ?', [api_key]);
-    if (devices.length === 0) return res.status(401).json({ error: 'Unauthorized: Invalid API key' });
-    const device_id = devices[0].id;
-
-    await db.execute(
-      `INSERT INTO sensor_readings (device_id, voltage, current_amps, active_power_watts, total_kwh)
-       VALUES (?, ?, ?, ?, ?)`,
-      [device_id, voltage, current_amps, active_power_watts, total_kwh]);
-    await db.execute("UPDATE devices SET last_seen = NOW(), status = 'online' WHERE id = ?", [device_id]);
-
-    res.status(200).json({ message: 'Telemetry recorded successfully' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+app.post('/api/telemetry', sensor.ingest);
 
 // ----------------------------------------------------
 // Static files + JSON 404 for unknown API paths (must stay last)
@@ -111,3 +93,4 @@ app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => console.log(`Server running on http://localhost:${PORT}`));
 require('./services/meralcoRates').startScheduler();
+require('./services/retention').startScheduler();
