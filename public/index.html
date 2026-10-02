@@ -35,6 +35,19 @@
 
     <section class="panel">
       <div class="panel-head">
+        <div><h2>Live power</h2><p id="liveHint" class="muted">Average watts, 1-min buckets</p></div>
+        <div class="seg">
+          <button data-hist="60" aria-pressed="true">1h</button>
+          <button data-hist="360" aria-pressed="false">6h</button>
+          <button data-hist="1440" aria-pressed="false">24h</button>
+        </div>
+      </div>
+      <p id="liveReadout" class="readout muted">Hover or tap the chart for details</p>
+      <svg id="liveChart" role="img" aria-label="Power in watts over time"></svg>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
         <div><h2>Usage trend</h2><p id="chartHint" class="muted">Last 30 days</p></div>
         <div class="seg">
           <button data-range="daily" aria-pressed="true">Daily</button>
@@ -51,6 +64,7 @@
         <span class="rate"><span id="rateUnit">₱</span><input id="rate" type="number" min="0.01" step="0.01" inputmode="decimal"></span>
       </label>
       <p id="rateMsg" class="error" role="alert"></p>
+      <div class="row">Meter pairing <button id="pairOpen" class="link">Pair device</button></div>
       <label class="row">Use simulated meter data
         <input id="mockToggle" type="checkbox" class="switch">
       </label>
@@ -74,6 +88,15 @@
       <div><dt>Per day</dt><dd><b id="rDay">₱0.00</b> <small><span id="rDayKwh">0.0</span> kWh</small></dd></div>
       <div><dt>Per month (30 days)</dt><dd><b id="rMonth">₱0.00</b> <small><span id="rMonthKwh">0.0</span> kWh</small></dd></div>
     </dl>
+  </dialog>
+
+  <dialog id="pair">
+    <div class="dlg-head"><h2>Pair device</h2><button id="pairClose" class="link" aria-label="Close">✕</button></div>
+    <p class="muted">Join the meter's "CurrentLy-Setup" WiFi and enter this code on its setup page.</p>
+    <p id="pairCode" style="font-size:2.2rem;font-weight:800;letter-spacing:.3em;text-align:center;margin:12px 0">——</p>
+    <p id="pairTimer" class="muted" style="text-align:center"></p>
+    <p id="pairMsg" class="error" role="alert"></p>
+    <button id="pairNew" class="link">New code</button>
   </dialog>
 
   <script src="js/api.js"></script>

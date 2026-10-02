@@ -31,6 +31,23 @@ document.querySelectorAll('[data-range]').forEach(b => b.addEventListener('click
   renderChart();
 }));
 
+// ---- Live power: GET /api/sensor-data/history (average watts per bucket) -----
+let histMinutes = 60;
+async function loadHistory() {
+  try {
+    const h = await API.get('/sensor-data/history?minutes=' + histMinutes);
+    $('liveHint').textContent = `Average watts, ${h.bucketMinutes}-min buckets`;
+    drawTrend($('liveChart'), h.points, p => {
+      $('liveReadout').textContent = p ? `${p.label}: ${Math.round(p.value)} W` : 'Hover or tap the chart for details';
+    });
+  } catch { /* keep the last chart on a transient error */ }
+}
+document.querySelectorAll('[data-hist]').forEach(b => b.addEventListener('click', () => {
+  histMinutes = Number(b.dataset.hist);
+  document.querySelectorAll('[data-hist]').forEach(x => x.setAttribute('aria-pressed', x === b));
+  loadHistory();
+}));
+
 // ---- ESP32 INTEGRATION: device status pill ---------------------------------
 // Polls GET /api/device/status. The server marks the device online while the ESP32
 // keeps POSTing to /api/sensor-data (timeout is ONLINE_TIMEOUT_MS in data/store.js).
@@ -64,9 +81,32 @@ function calc() {
   $('rDay').textContent = money(day * s.rate, s.currency); $('rMonth').textContent = money(day * 30 * s.rate, s.currency);
 }
 
-loadSummary(); loadStatus();
+// ---- Device pairing: 6-digit code with a countdown (the API key is never shown) ----
+const pdlg = $('pair'); let pairTimer = null, pairEnd = 0;
+function pairTick() {
+  const left = Math.round((pairEnd - Date.now()) / 1000);
+  if (left <= 0) { clearInterval(pairTimer); $('pairCode').textContent = '——'; $('pairTimer').textContent = 'Code expired. Tap "New code".'; return; }
+  $('pairTimer').textContent = `Expires in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+}
+async function newPairCode() {
+  $('pairMsg').textContent = '';
+  try {
+    const r = await API.post('/device/pair-code');
+    $('pairCode').textContent = r.code;
+    pairEnd = Date.now() + r.expiresInSec * 1000;
+    clearInterval(pairTimer); pairTimer = setInterval(pairTick, 1000); pairTick();
+  } catch (err) { $('pairMsg').textContent = err.message; }
+}
+$('pairOpen').addEventListener('click', () => { pdlg.showModal(); newPairCode(); });
+$('pairNew').addEventListener('click', newPairCode);
+$('pairClose').addEventListener('click', () => pdlg.close());
+pdlg.addEventListener('close', () => clearInterval(pairTimer));
+pdlg.addEventListener('click', e => { if (e.target === pdlg) pdlg.close(); });
+
+loadSummary(); loadStatus(); loadHistory();
 setInterval(loadSummary, 5000);
 setInterval(loadStatus, 10000);
+setInterval(loadHistory, 30000);
 
 // Simulated data no longer exists: hide the old toggle if it is still in index.html.
 $('mockToggle')?.closest('label')?.remove();
