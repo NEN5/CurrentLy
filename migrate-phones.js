@@ -54,6 +54,27 @@ const statements = [
     await db.query(sql);
     console.log("OK:", sql.match(/EXISTS (\w+)/)[1]);
   }
+
+  // tariff_settings.use_custom: 0 = use Meralco's current rate (default), 1 = the user's own rate.
+  const [cols] = await db.query(
+    "SELECT COUNT(*) AS n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tariff_settings' AND COLUMN_NAME = 'use_custom'",
+  );
+  if (Number(cols[0].n)) {
+    console.log("OK: tariff_settings.use_custom already exists");
+  } else {
+    await db.query(
+      "ALTER TABLE tariff_settings ADD COLUMN use_custom TINYINT NOT NULL DEFAULT 0",
+    );
+    // 12.00 was the old built-in default, so any other value was typed in by the user: keep it.
+    const [r] = await db.query(
+      "UPDATE tariff_settings SET use_custom = 1 WHERE rate_per_kwh <> 12.00",
+    );
+    console.log(
+      "OK: tariff_settings.use_custom added (" +
+        r.affectedRows +
+        " existing custom rate(s) kept)",
+    );
+  }
   process.exit(0);
 })().catch((e) => {
   console.error("Migration failed:", e.message);
