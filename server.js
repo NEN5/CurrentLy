@@ -24,6 +24,9 @@ app.use('/api/settings', require('./routes/settings'));
 app.use('/api/sensor-data', sensor.router);
 app.use('/api/device', sensor.deviceRouter);
 app.use('/api/device', require('./routes/pairing'));   // pair-code + claim
+const phones = require('./routes/phones');
+app.use('/api/phones', phones.userRouter);             // add / verify / remove SMS numbers (login)
+app.use('/api/device', phones.deviceRouter);           // ESP32: sync numbers + OTP texts, report delivery
 app.use('/api/rates', require('./routes/rates'));      // Meralco monthly rate (Tavily)
 
 // ----------------------------------------------------
