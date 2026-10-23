@@ -24,9 +24,10 @@ async function loadSummary() {
   $("todayKwh").textContent = kwh(s.todayKwh);
   $("livePower").textContent =
     s.livePower === null ? "—" : Math.round(s.livePower);
-  if (document.activeElement !== $("rate")) $("rate").value = s.rate;
+  if (document.activeElement !== $("rate")) $("rate").value = s.rate.toFixed(2);
   $("rateUnit").textContent = s.currency;
-  $("calcRate").textContent = `${s.currency}${s.rate} per kWh`;
+  $("calcRate").textContent = `${s.currency}${s.rate.toFixed(2)} per kWh`;
+  showRateState(s);
   renderChart();
 }
 function renderChart() {
@@ -88,14 +89,79 @@ async function loadStatus() {
     : "No data received yet";
 }
 
-// ---- Settings ----------------------------------------------------------------
+// ---- Settings (sidebar > Settings) ------------------------------------------------
+// The rate defaults to Meralco's current rate, shown with 2 decimals. Changing it asks first, because a
+// custom rate can make the bill estimate inaccurate; "Use Meralco rate" goes back to the default.
+const sdlg = $("settings"),
+  cdlg = $("rateConfirm");
+const isGuest = () => localStorage.getItem("token") === "guest";
+function lockRate(locked) {
+  $("rate").readOnly = locked;
+  $("rateEdit").hidden = !locked;
+}
+function showRateState(s) {
+  // runs with every summary refresh
+  const custom = !!s.rateCustom,
+    meralco = `${s.currency}${s.defaultRate.toFixed(2)}`;
+  $("rateInfo").textContent = custom
+    ? `Custom rate in use. Meralco's current rate is ${meralco}.`
+    : "Using Meralco's current rate (default).";
+  $("rateWarn").hidden = !custom;
+  $("rateReset").hidden = !custom;
+  $("rateConfirmDefault").textContent = meralco;
+  if (custom) lockRate(false);
+  else if (document.activeElement !== $("rate")) lockRate(true);
+}
+$("settingsOpen").addEventListener("click", () => {
+  $("rateMsg").textContent = "";
+  sdlg.showModal();
+});
+$("settingsClose").addEventListener("click", () => sdlg.close());
+sdlg.addEventListener("click", (e) => {
+  if (e.target === sdlg) sdlg.close();
+});
+$("rateEdit").addEventListener("click", () => {
+  if (isGuest()) {
+    $("rateMsg").textContent = "Log in to change the rate.";
+    return;
+  }
+  cdlg.showModal();
+});
+$("rateConfirmCancel").addEventListener("click", () => cdlg.close());
+$("rateConfirmYes").addEventListener("click", () => {
+  cdlg.close();
+  lockRate(false);
+  $("rateWarn").hidden = false;
+  $("rate").focus();
+  $("rate").select();
+});
+cdlg.addEventListener("click", (e) => {
+  if (e.target === cdlg) cdlg.close();
+});
 $("rate").addEventListener("change", async (e) => {
+  const v = Math.round(Number(e.target.value) * 100) / 100; // 2 decimals, like Meralco
+  if (!(v > 0)) {
+    $("rateMsg").textContent = "Enter a rate above 0.00.";
+    loadSummary();
+    return;
+  }
   try {
-    await API.put("/settings", { rate: Number(e.target.value) });
+    await API.put("/tariff", { rate: v });
+    $("rateMsg").textContent = "";
+    e.target.value = v.toFixed(2);
+  } catch (err) {
+    $("rateMsg").textContent = err.message;
+  }
+  loadSummary();
+});
+$("rateReset").addEventListener("click", async () => {
+  try {
+    await API.put("/tariff", { reset: true });
     $("rateMsg").textContent = "";
   } catch (err) {
     $("rateMsg").textContent = err.message;
   }
+  lockRate(true);
   loadSummary();
 });
 // Logout asks for confirmation first, to avoid accidental clicks.
@@ -178,17 +244,14 @@ setInterval(loadSummary, 5000);
 setInterval(loadStatus, 10000);
 setInterval(loadHistory, 30000);
 
-// Simulated data no longer exists: hide the old toggle if it is still in index.html.
-$("mockToggle")?.closest("label")?.remove();
-
 // ---- Meralco monthly rate (from /api/rates/meralco; defaults to September 2026) ----
 async function loadMeralcoRate() {
   const el = $("rateKwh");
   if (!el) return;
   try {
     const r = await API.get("/rates/meralco");
-    el.textContent = r.overall_rate_per_kwh.toFixed(4);
-    el.title = `Meralco ${r.billing_period} (${r.rate_change.direction} of ₱${r.rate_change.amount_per_kwh.toFixed(4)}/kWh)`;
+    el.textContent = r.overall_rate_per_kwh.toFixed(2);
+    el.title = `Meralco ${r.billing_period} (${r.rate_change.direction} of ₱${r.rate_change.amount_per_kwh.toFixed(2)}/kWh)`;
   } catch {
     /* keep the value already in the HTML */
   }
