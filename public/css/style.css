@@ -328,21 +328,6 @@ label {
 }
 
 /* floating calculator */
-.fab {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 0;
-  background: var(--accent);
-  color: #fff;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 6px 20px rgba(15, 123, 108, 0.35);
-}
 
 dialog {
   border: 1px solid var(--line);
@@ -938,7 +923,6 @@ body.sidebar-open {
 /* button hover / press effects (hover only on devices that really hover, so touch screens do not get stuck states) */
 .link,
 .seg button,
-.fab,
 .primary,
 .pw-toggle,
 .switch,
@@ -967,11 +951,6 @@ body.sidebar-open {
 
   .seg button[aria-pressed="true"]:hover {
     box-shadow: 0 0 0 1px var(--accent);
-  }
-
-  .fab:hover {
-    transform: translateY(-3px) scale(1.07);
-    box-shadow: 0 10px 26px rgba(15, 123, 108, 0.45);
   }
 
   .primary:hover {
@@ -1011,10 +990,6 @@ body.sidebar-open {
 .brand-toggle:active,
 .sidebar-item:active {
   transform: scale(0.96);
-}
-
-.fab:active {
-  transform: scale(0.94);
 }
 
 /* class rules above would otherwise override the hidden attribute */
@@ -1094,6 +1069,83 @@ body.sidebar-open {
 
 .error.ok {
   color: var(--ok);
+}
+
+/* notification bell + SIM messages */
+.bell {
+  position: relative;
+  display: inline-flex;
+  padding: 6px;
+}
+
+.bell svg {
+  width: 20px;
+  height: 20px;
+}
+
+.bell-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--off);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.bell-badge[hidden] {
+  display: none;
+}
+
+.inbox-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.inbox-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.inbox-item.new {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.inbox-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+
+.inbox-from {
+  font-weight: 700;
+}
+
+.inbox-time {
+  color: var(--muted);
+}
+
+.inbox-body {
+  margin: 0;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1208,14 +1260,12 @@ body.sidebar-open {
 
   .link,
   .seg button,
-  .fab,
   .primary,
   .pw-toggle,
   .switch {
     transition: none;
   }
 
-  .fab:hover,
   .primary:hover {
     transform: none;
   }
