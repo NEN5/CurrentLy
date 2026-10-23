@@ -74,7 +74,6 @@
           </svg>
           <span id="bellBadge" class="bell-badge" hidden>0</span>
         </button>
-        <button id="logout" class="link">Log out</button>
       </div>
     </header>
 
@@ -169,7 +168,24 @@
           </svg>
           Add phone number
         </button>
-        <button class="sidebar-item sidebar-end" data-target="logout">
+        <button id="settingsOpen" class="sidebar-item" data-self>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 6h8M16 6h4M4 12h2M10 12h10M4 18h10M18 18h2" />
+            <circle cx="14" cy="6" r="2" />
+            <circle cx="8" cy="12" r="2" />
+            <circle cx="16" cy="18" r="2" />
+          </svg>
+          Settings
+        </button>
+        <button id="logout" class="sidebar-item sidebar-end" data-self>
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -211,7 +227,7 @@
         </div>
         <div><span id="todayKwh">0.0</span><small>kWh today</small></div>
         <div><span id="monthKwh">0.0</span><small>kWh this month</small></div>
-        <div><span id="rateKwh">0.0</span><small>kWh Rate</small></div>
+        <div><span id="rateKwh">0.00</span><small>kWh Rate</small></div>
       </section>
 
       <section class="panel">
@@ -278,52 +294,6 @@
           Hover or tap the chart for details
         </p>
         <svg id="chart" role="img" aria-label="Energy usage in kWh"></svg>
-      </section>
-
-      <section class="panel settings">
-        <h2 class="sec">
-          <svg
-            class="ico"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M4 6h8M16 6h4M4 12h2M10 12h10M4 18h10M18 18h2" />
-            <circle cx="14" cy="6" r="2" />
-            <circle cx="8" cy="12" r="2" />
-            <circle cx="16" cy="18" r="2" /></svg
-          >Settings
-        </h2>
-        <label class="row"
-          >Electricity rate per kWh
-          <span class="rate"
-            ><span id="rateUnit">₱</span
-            ><input
-              id="rate"
-              type="number"
-              min="0.01"
-              step="0.01"
-              inputmode="decimal"
-          /></span>
-        </label>
-        <p id="rateMsg" class="error" role="alert"></p>
-        <label class="row"
-          >Show detailed meter readings
-          <input
-            id="nerdToggle"
-            type="checkbox"
-            class="switch"
-            title="Show voltage, current, apparent power and more in place of Current watts"
-          />
-        </label>
-        <label class="row"
-          >Use simulated meter data
-          <input id="mockToggle" type="checkbox" class="switch" />
-        </label>
       </section>
     </main>
 
@@ -482,6 +452,81 @@
       </p>
       <ul id="inboxList" class="inbox-list"></ul>
       <p id="inboxMsg" class="error" role="alert"></p>
+    </dialog>
+
+    <dialog id="settings">
+      <div class="dlg-head">
+        <h2 class="sec">
+          <svg
+            class="ico"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 6h8M16 6h4M4 12h2M10 12h10M4 18h10M18 18h2" />
+            <circle cx="14" cy="6" r="2" />
+            <circle cx="8" cy="12" r="2" />
+            <circle cx="16" cy="18" r="2" /></svg
+          >Settings
+        </h2>
+        <button id="settingsClose" class="link" aria-label="Close">✕</button>
+      </div>
+      <label class="row"
+        >Electricity rate per kWh
+        <span class="rate"
+          ><span id="rateUnit">₱</span
+          ><input
+            id="rate"
+            type="number"
+            min="0.01"
+            step="0.01"
+            inputmode="decimal"
+            readonly
+        /></span>
+      </label>
+      <p id="rateInfo" class="muted"></p>
+      <div class="rate-actions">
+        <button id="rateEdit" class="link" type="button">Change rate</button>
+        <button id="rateReset" class="link" type="button" hidden>
+          Use Meralco rate
+        </button>
+      </div>
+      <p id="rateWarn" class="warn" role="note" hidden>
+        ⚠ A custom rate can make your bill estimate inaccurate, because it no
+        longer follows Meralco's published rate.
+      </p>
+      <p id="rateMsg" class="error" role="alert"></p>
+      <label class="row"
+        >Show detailed meter readings
+        <input
+          id="nerdToggle"
+          type="checkbox"
+          class="switch"
+          title="Show voltage, current, apparent power and more in place of Current watts"
+        />
+      </label>
+    </dialog>
+
+    <dialog id="rateConfirm">
+      <div class="dlg-head"><h2>Change the rate?</h2></div>
+      <p class="muted">
+        ⚠ Changing the electricity rate can make your bill estimate inaccurate.
+        The default is Meralco's current rate,
+        <b id="rateConfirmDefault">₱0.00</b> per kWh. Only change it if you know
+        your own rate.
+      </p>
+      <div class="two">
+        <button id="rateConfirmCancel" class="link cancel" type="button">
+          Cancel
+        </button>
+        <button id="rateConfirmYes" class="primary" type="button">
+          Change anyway
+        </button>
+      </div>
     </dialog>
 
     <script src="js/api.js"></script>
