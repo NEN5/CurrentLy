@@ -274,11 +274,6 @@ label {
   font-weight: 500;
 }
 
-.settings {
-  display: grid;
-  gap: 12px;
-}
-
 .row {
   display: flex;
   justify-content: space-between;
@@ -1069,6 +1064,36 @@ body.sidebar-open {
 
 .error.ok {
   color: var(--ok);
+}
+
+/* settings dialog */
+.rate input[readonly] {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.rate-actions {
+  display: flex;
+  gap: 14px;
+}
+
+.warn {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+  font-size: 0.85rem;
+}
+
+.warn[hidden] {
+  display: none;
+}
+
+.link.cancel {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
 }
 
 /* notification bell + SIM messages */
