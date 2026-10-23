@@ -1,4 +1,5 @@
-// Login / sign-up page logic. Backend is a placeholder (see routes/auth.js).
+// Login / sign-up page logic. Talks to the API on Render (see routes/auth.js).
+const AUTH_API = 'https://currently-live.onrender.com';
 const form = document.getElementById('authForm');
 const page = form.dataset.page; // 'login' | 'signup'
 const btn = document.getElementById('submitBtn');
@@ -24,11 +25,11 @@ if (macInput) {
     setError('mac', '');
   });
 }
-['email', 'password'].forEach(n => document.getElementById(n).addEventListener('input', () => setError(n, '')));
+['email', 'password'].forEach(n => document.getElementById(n)?.addEventListener('input', () => setError(n, '')));
 
 // Show / hide password
 const toggle = document.querySelector('.pw-toggle');
-toggle.addEventListener('click', () => {
+toggle?.addEventListener('click', () => {
   const pw = document.getElementById('password');
   const show = pw.type === 'password';
   pw.type = show ? 'text' : 'password';
@@ -60,7 +61,7 @@ form.addEventListener('submit', async e => {
   btn.disabled = true; btn.classList.add('loading');
   const label = btn.textContent; btn.textContent = page === 'login' ? 'Logging in…' : 'Creating account…';
   try {
-    const res = await fetch('/api/auth/' + page, {
+    const res = await fetch(AUTH_API + '/api/auth/' + page, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(v)
     });
     const data = await res.json().catch(() => ({}));
@@ -73,13 +74,14 @@ form.addEventListener('submit', async e => {
     localStorage.setItem('user', data.user.name);
     location.href = 'index.html';
   } catch (err) {
-    formError.textContent = 'Cannot reach the server. Run "npm start" and open http://localhost:3000.';
+    formError.textContent = 'Cannot reach the server. It may be waking up; wait a few seconds and try again.';
   } finally {
     btn.disabled = false; btn.classList.remove('loading'); btn.textContent = label;
   }
 });
 
 // Guest: href goes straight to index.html; just set the guest session first.
-document.getElementById('guest').addEventListener('click', () => {
+// (The sign-up page has no guest link, so this is optional there.)
+document.getElementById('guest')?.addEventListener('click', () => {
   localStorage.setItem('token', 'guest'); localStorage.setItem('user', 'Guest');
 });
