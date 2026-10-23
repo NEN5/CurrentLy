@@ -313,7 +313,30 @@ async function deviceAuth(req, res, next) {
   }
 }
 
-// GET /api/device/sync -> { phones: ['+639...'], sms: [{ id, to, body }] }
+// Bill figures for the meter's OLED. The month maths is the dashboard's, cached 60 s per user so the
+// 10-second sync does not run it every time. Loaded lazily to avoid a circular require at start-up.
+const billCache = new Map();
+async function billFor(userId) {
+  const hit = billCache.get(userId);
+  if (hit && Date.now() - hit.at < 60000) return hit.value;
+  let value = null;
+  try {
+    const sum = await require("./sensorData").computeSummary(userId);
+    const r2 = (n) => Math.round(n * 100) / 100;
+    value = {
+      now: r2(sum.bill),
+      proj: r2(sum.projectedBill),
+      rate: r2(sum.rate),
+    };
+  } catch (err) {
+    console.error("bill for device failed:", err.message);
+    return hit ? hit.value : null;
+  }
+  billCache.set(userId, { at: Date.now(), value });
+  return value;
+}
+
+// GET /api/device/sync -> { bill: {now, proj, rate}, phones: ['+639...'], sms: [{ id, to, body }] }
 // phones = verified numbers (the only ones the ESP32 may text); sms = OTP texts waiting to be sent.
 deviceRouter.get(
   "/sync",
@@ -332,6 +355,7 @@ deviceRouter.get(
     );
     res.set("Cache-Control", "no-store");
     res.json({
+      bill: await billFor(userId),
       phones: phones.map((p) => p.phone),
       sms: sms.map((s) => ({ id: s.id, to: s.to_number, body: s.body })),
     });

@@ -149,9 +149,8 @@ const sqlUtc = (ms) =>
 // Days older than RAW_SUMMARY_DAYS come from daily_usage (rollup, see services/retention.js);
 // the most recent days are computed from raw readings and override the rollup.
 // ---------------------------------------------------------------------------
-router.get("/summary", requireAuth.optional, async (req, res) => {
-  try {
-    const userId = req.user ? req.user.id : null;
+async function computeSummary(userId) {
+  {
     const defaultRate = await meralcoRate(); // Meralco's current rate, 2 decimals
     let rate = defaultRate,
       rateCustom = false,
@@ -240,7 +239,7 @@ router.get("/summary", requireAuth.optional, async (req, res) => {
     const monthKwh = monthly[5].value;
     const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
     const projectedKwh = (monthKwh / dom) * daysInMonth;
-    res.json({
+    return {
       rate,
       rateCustom,
       defaultRate,
@@ -253,7 +252,13 @@ router.get("/summary", requireAuth.optional, async (req, res) => {
       livePower,
       daily,
       monthly,
-    });
+    };
+  }
+}
+
+router.get("/summary", requireAuth.optional, async (req, res) => {
+  try {
+    res.json(await computeSummary(req.user ? req.user.id : null));
   } catch (err) {
     console.error("summary failed:", err.message);
     res.status(500).json({ error: "Server error" });
@@ -372,4 +377,4 @@ deviceRouter.get("/status", requireAuth.optional, async (req, res) => {
   }
 });
 
-module.exports = { router, deviceRouter, ingest };
+module.exports = { router, deviceRouter, ingest, computeSummary };
