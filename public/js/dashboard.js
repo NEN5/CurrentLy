@@ -382,3 +382,78 @@ phdlg.addEventListener("close", hideVerify);
 phdlg.addEventListener("click", (e) => {
   if (e.target === phdlg) phdlg.close();
 });
+
+// ---- SIM messages: the bell shows how many texts the meter's SIM received since you last looked ----
+const idlg = $("inbox");
+function setBadge(n) {
+  $("bellBadge").textContent = n > 99 ? "99+" : String(n);
+  $("bellBadge").hidden = n < 1;
+  $("bell").setAttribute("aria-label", n ? `Messages, ${n} new` : "Messages");
+}
+async function loadInboxCount() {
+  if (localStorage.getItem("token") === "guest") return; // the inbox needs a login
+  try {
+    setBadge((await API.get("/inbox")).unread);
+  } catch {
+    /* keep the last count */
+  }
+}
+function renderInbox(messages) {
+  const list = $("inboxList");
+  list.replaceChildren();
+  if (!messages.length) {
+    const li = document.createElement("li");
+    li.className = "muted";
+    li.textContent = "No messages yet.";
+    list.append(li);
+  }
+  for (const m of messages) {
+    const li = document.createElement("li");
+    li.className = "inbox-item" + (m.read ? "" : " new");
+    const top = document.createElement("div");
+    top.className = "inbox-top";
+    const from = document.createElement("span");
+    from.className = "inbox-from";
+    from.textContent = m.from;
+    const time = document.createElement("span");
+    time.className = "inbox-time";
+    time.textContent = new Date(m.at).toLocaleString("en-PH", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+    const body = document.createElement("p");
+    body.className = "inbox-body";
+    body.textContent = m.text;
+    top.append(from, time);
+    li.append(top, body);
+    list.append(li);
+  }
+}
+async function openInbox() {
+  $("inboxMsg").textContent = "";
+  idlg.showModal();
+  try {
+    const r = await API.get("/inbox");
+    renderInbox(r.messages); // texts that were new when you opened it stay highlighted
+    if (r.unread) await API.post("/inbox/read");
+    setBadge(0);
+  } catch (err) {
+    $("inboxMsg").textContent = err.message;
+  }
+}
+$("bell").addEventListener("click", openInbox);
+$("inboxClose").addEventListener("click", () => idlg.close());
+$("inboxClear").addEventListener("click", async () => {
+  try {
+    await API.del("/inbox");
+    renderInbox([]);
+    setBadge(0);
+  } catch (err) {
+    $("inboxMsg").textContent = err.message;
+  }
+});
+idlg.addEventListener("click", (e) => {
+  if (e.target === idlg) idlg.close();
+});
+loadInboxCount();
+setInterval(loadInboxCount, 20000);
