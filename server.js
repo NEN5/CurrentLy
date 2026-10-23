@@ -1,52 +1,61 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const db = require('./data/db');
-const requireAuth = require('./middleware/requireAuth');
-const sensor = require('./routes/sensorData');
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
+const db = require("./data/db");
+const requireAuth = require("./middleware/requireAuth");
+const sensor = require("./routes/sensorData");
 
 if (!process.env.JWT_SECRET) {
-  console.error('Missing JWT_SECRET in environment. Add it to .env (local) or Render env vars.');
+  console.error(
+    "Missing JWT_SECRET in environment. Add it to .env (local) or Render env vars.",
+  );
   process.exit(1);
 }
 
 const app = express();
-app.set('trust proxy', 1); // Render sits behind a proxy; needed for per-IP rate limiting
+app.set("trust proxy", 1); // Render sits behind a proxy; needed for per-IP rate limiting
 app.use(cors());
-app.use(express.json({ limit: '4kb' }));
+app.use(express.json({ limit: "4kb" }));
 
 // ----------------------------------------------------
 // Routes the frontend already uses
 // ----------------------------------------------------
-app.use('/api/auth', require('./routes/auth'));          // login + signup (MySQL)
-app.use('/api/settings', require('./routes/settings'));
-app.use('/api/sensor-data', sensor.router);
-app.use('/api/device', sensor.deviceRouter);
-app.use('/api/device', require('./routes/pairing'));   // pair-code + claim
-const phones = require('./routes/phones');
-app.use('/api/phones', phones.userRouter);             // add / verify / remove SMS numbers (login)
-app.use('/api/device', phones.deviceRouter);           // ESP32: sync numbers + OTP texts, report delivery
-app.use('/api/rates', require('./routes/rates'));      // Meralco monthly rate (Tavily)
+app.use("/api/auth", require("./routes/auth")); // login + signup (MySQL)
+app.use("/api/settings", require("./routes/settings"));
+app.use("/api/sensor-data", sensor.router);
+app.use("/api/device", sensor.deviceRouter);
+app.use("/api/device", require("./routes/pairing")); // pair-code + claim
+const phones = require("./routes/phones");
+app.use("/api/phones", phones.userRouter); // add / verify / remove SMS numbers (login)
+app.use("/api/device", phones.deviceRouter); // ESP32: sync numbers + OTP texts, report delivery
+const inbox = require("./routes/inbox");
+app.use("/api/inbox", inbox.userRouter); // texts the meter's SIM received (bell, login)
+app.use("/api/device", inbox.deviceRouter); // ESP32: upload texts received by the SIM
+app.use("/api/rates", require("./routes/rates")); // Meralco monthly rate (Tavily)
 
 // ----------------------------------------------------
 // Dashboard summary (login required; user comes from the token)
 // ----------------------------------------------------
-app.get('/api/dashboard/summary', requireAuth, async (req, res) => {
+app.get("/api/dashboard/summary", requireAuth, async (req, res) => {
   try {
     const userId = req.user.id;
 
     const [tariff] = await db.execute(
-      'SELECT rate_per_kwh, currency FROM tariff_settings WHERE user_id = ?', [userId]);
+      "SELECT rate_per_kwh, currency FROM tariff_settings WHERE user_id = ?",
+      [userId],
+    );
     const rate = Number(tariff[0]?.rate_per_kwh) || 12.0;
-    const currency = tariff[0]?.currency || 'PHP';
+    const currency = tariff[0]?.currency || "PHP";
 
     const [readings] = await db.execute(
       `SELECT sr.total_kwh, sr.active_power_watts, sr.recorded_at
        FROM sensor_readings sr
        JOIN devices d ON sr.device_id = d.id
        WHERE d.user_id = ?
-       ORDER BY sr.recorded_at DESC LIMIT 1`, [userId]);
+       ORDER BY sr.recorded_at DESC LIMIT 1`,
+      [userId],
+    );
 
     const latestkWh = Number(readings[0]?.total_kwh) || 0;
     const currentWatts = Number(readings[0]?.active_power_watts) || 0;
@@ -56,21 +65,23 @@ app.get('/api/dashboard/summary', requireAuth, async (req, res) => {
       rate_per_kwh: rate,
       current_power_watts: currentWatts,
       total_kwh: latestkWh,
-      estimated_bill: Number((latestkWh * rate).toFixed(2))
+      estimated_bill: Number((latestkWh * rate).toFixed(2)),
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: "Server error" });
   }
 });
 
 // ----------------------------------------------------
 // Appliance calculator
 // ----------------------------------------------------
-app.post('/api/calculator/estimate', (req, res) => {
+app.post("/api/calculator/estimate", (req, res) => {
   const { watts, hours_per_day, rate_per_kwh, quantity } = req.body || {};
   if (!(watts >= 0) || !(hours_per_day >= 0))
-    return res.status(400).json({ error: 'watts and hours_per_day are required numbers.' });
+    return res
+      .status(400)
+      .json({ error: "watts and hours_per_day are required numbers." });
   const qty = quantity || 1;
   const dailyKwh = (watts * hours_per_day * qty) / 1000;
   const monthlyKwh = dailyKwh * 30;
@@ -78,22 +89,24 @@ app.post('/api/calculator/estimate', (req, res) => {
   res.json({
     daily_kwh: Number(dailyKwh.toFixed(2)),
     monthly_kwh: Number(monthlyKwh.toFixed(2)),
-    monthly_cost: Number(monthlyCost.toFixed(2))
+    monthly_cost: Number(monthlyCost.toFixed(2)),
   });
 });
 
 // ----------------------------------------------------
 // ESP32 telemetry: legacy alias of POST /api/sensor-data (same handler)
 // ----------------------------------------------------
-app.post('/api/telemetry', sensor.ingest);
+app.post("/api/telemetry", sensor.ingest);
 
 // ----------------------------------------------------
 // Static files + JSON 404 for unknown API paths (must stay last)
 // ----------------------------------------------------
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
+app.use(express.static(path.join(__dirname, "public")));
+app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on http://localhost:${PORT}`));
-require('./services/meralcoRates').startScheduler();
-require('./services/retention').startScheduler();
+app.listen(PORT, "0.0.0.0", () =>
+  console.log(`Server running on http://localhost:${PORT}`),
+);
+require("./services/meralcoRates").startScheduler();
+require("./services/retention").startScheduler();
