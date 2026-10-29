@@ -120,6 +120,21 @@
           </svg>
           Dashboard
         </button>
+        <button id="historyOpen" class="sidebar-item" data-self>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+            <path d="M3 3v5h5M12 7v5l3 2" />
+          </svg>
+          History
+        </button>
         <button id="calcOpen" class="sidebar-item" data-self>
           <svg
             viewBox="0 0 24 24"
@@ -244,41 +259,6 @@
                 stroke-linejoin="round"
                 aria-hidden="true"
               >
-                <path d="M3 12h4l3-8 4 16 3-8h4" /></svg
-              >Live power
-            </h2>
-            <p id="liveHint" class="muted">Average watts, 1-min buckets</p>
-          </div>
-          <div class="seg">
-            <button data-hist="60" aria-pressed="true">1h</button>
-            <button data-hist="360" aria-pressed="false">6h</button>
-            <button data-hist="1440" aria-pressed="false">24h</button>
-          </div>
-        </div>
-        <p id="liveReadout" class="readout muted">
-          Hover or tap the chart for details
-        </p>
-        <svg
-          id="liveChart"
-          role="img"
-          aria-label="Power in watts over time"
-        ></svg>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <h2 class="sec">
-              <svg
-                class="ico"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
                 <path d="M3 17l6-6 4 4 8-8" />
                 <path d="M15 7h6v6" /></svg
               >Usage trend
@@ -296,6 +276,59 @@
         <svg id="chart" role="img" aria-label="Energy usage in kWh"></svg>
       </section>
     </main>
+
+    <dialog id="history" class="wide">
+      <div class="dlg-head">
+        <h2 class="sec">
+          <svg
+            class="ico"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+            <path d="M3 3v5h5M12 7v5l3 2" /></svg
+          >History
+        </h2>
+        <button id="historyClose" class="link" aria-label="Close">✕</button>
+      </div>
+      <div class="seg full" role="group" aria-label="History view">
+        <button data-htab="power" aria-pressed="true">Live power</button>
+        <button data-htab="theft" aria-pressed="false">Theft log</button>
+      </div>
+
+      <div id="histPower">
+        <div class="panel-head">
+          <p id="liveHint" class="muted">Average watts, 1-min buckets</p>
+          <div class="seg">
+            <button data-hist="60" aria-pressed="true">1h</button>
+            <button data-hist="360" aria-pressed="false">6h</button>
+            <button data-hist="1440" aria-pressed="false">24h</button>
+          </div>
+        </div>
+        <p id="liveReadout" class="readout muted">
+          Hover or tap the chart for details
+        </p>
+        <svg
+          id="liveChart"
+          role="img"
+          aria-label="Power in watts over time"
+        ></svg>
+      </div>
+
+      <div id="histTheft" hidden>
+        <div class="panel-head">
+          <p id="theftSummary" class="muted">Loading…</p>
+          <button id="theftClear" class="link" type="button">Clear log</button>
+        </div>
+        <ul id="theftList" class="theft-list"></ul>
+        <p id="theftMsg" class="error" role="alert"></p>
+      </div>
+    </dialog>
 
     <dialog id="calc">
       <div class="dlg-head">
