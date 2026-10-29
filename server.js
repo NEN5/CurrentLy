@@ -29,6 +29,9 @@ app.use("/api/device", require("./routes/pairing")); // pair-code + claim
 const phones = require("./routes/phones");
 app.use("/api/phones", phones.userRouter); // add / verify / remove SMS numbers (login)
 app.use("/api/device", phones.deviceRouter); // ESP32: sync numbers + OTP texts, report delivery
+const theft = require("./routes/theft");
+app.use("/api/theft", theft.userRouter); // theft events log (History > Theft log, login)
+app.use("/api/device", theft.deviceRouter); // ESP32: report theft alarm start / end
 const inbox = require("./routes/inbox");
 app.use("/api/inbox", inbox.userRouter); // texts the meter's SIM received (bell, login)
 app.use("/api/device", inbox.deviceRouter); // ESP32: upload texts received by the SIM
