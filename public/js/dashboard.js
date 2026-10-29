@@ -51,8 +51,13 @@ document.querySelectorAll("[data-range]").forEach((b) =>
   }),
 );
 
-// ---- Live power: GET /api/sensor-data/history (average watts per bucket) -----
-let histMinutes = 60;
+// ---- History dialog (sidebar > History): Live power chart + Theft log ----------------------
+// Live power: GET /api/sensor-data/history (average watts per bucket). Theft log: GET /api/theft.
+// Both only load while the dialog is open, and refresh while it stays open.
+const hdlg = $("history");
+let histMinutes = 60,
+  histTab = "power",
+  histTimer = null;
 async function loadHistory() {
   try {
     const h = await API.get("/sensor-data/history?minutes=" + histMinutes);
@@ -75,6 +80,101 @@ document.querySelectorAll("[data-hist]").forEach((b) =>
     loadHistory();
   }),
 );
+
+const when = (ms) =>
+  new Date(ms).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
+function span(ms) {
+  const m = Math.max(1, Math.round(ms / 60000));
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  return h < 24 ? `${h} h ${m % 60} min` : `${Math.floor(h / 24)} d ${h % 24} h`;
+}
+function renderTheft(r) {
+  const list = $("theftList");
+  list.replaceChildren();
+  $("theftSummary").textContent = r.ongoing
+    ? "Theft is being detected right now."
+    : r.events.length
+      ? `${r.events.length} event${r.events.length === 1 ? "" : "s"} recorded.`
+      : "No theft detected.";
+  $("theftSummary").classList.toggle("alert", r.ongoing);
+  $("theftClear").hidden = !r.events.length;
+  if (!r.events.length) {
+    const li = document.createElement("li");
+    li.className = "muted";
+    li.textContent = "Nothing to show yet. Events appear here when the meter raises a theft alarm.";
+    list.append(li);
+    return;
+  }
+  for (const e of r.events) {
+    const li = document.createElement("li");
+    li.className = "theft-item" + (e.ongoing ? " ongoing" : "");
+    const top = document.createElement("div");
+    top.className = "theft-top";
+    const time = document.createElement("span");
+    time.className = "theft-time";
+    time.textContent = when(e.start);
+    const badge = document.createElement("span");
+    badge.className = "theft-badge " + (e.ongoing ? "ongoing" : "ended");
+    badge.textContent = e.ongoing ? "Ongoing" : "Ended";
+    top.append(time, badge);
+    const info = document.createElement("p");
+    info.className = "theft-info";
+    const lasted = span((e.end || Date.now()) - e.start);
+    info.textContent =
+      `Line ${Math.round(e.line)} W vs Home ${Math.round(e.home)} W · ` +
+      `peak unmetered +${Math.round(e.peakGap)} W · ${e.ongoing ? "for" : "lasted"} ${lasted}`;
+    li.append(top, info);
+    list.append(li);
+  }
+}
+async function loadTheft() {
+  if (localStorage.getItem("token") === "guest") {
+    $("theftSummary").textContent = "Log in to see the theft log.";
+    $("theftClear").hidden = true;
+    return;
+  }
+  try {
+    renderTheft(await API.get("/theft"));
+    $("theftMsg").textContent = "";
+  } catch (err) {
+    $("theftMsg").textContent = err.message;
+  }
+}
+function refreshHistory() {
+  if (histTab === "power") loadHistory();
+  else loadTheft();
+}
+document.querySelectorAll("[data-htab]").forEach((b) =>
+  b.addEventListener("click", () => {
+    histTab = b.dataset.htab;
+    document
+      .querySelectorAll("[data-htab]")
+      .forEach((x) => x.setAttribute("aria-pressed", x === b));
+    $("histPower").hidden = histTab !== "power";
+    $("histTheft").hidden = histTab !== "theft";
+    refreshHistory();
+  }),
+);
+$("historyOpen").addEventListener("click", () => {
+  hdlg.showModal();
+  refreshHistory();
+  clearInterval(histTimer);
+  histTimer = setInterval(refreshHistory, 15000);
+});
+$("historyClose").addEventListener("click", () => hdlg.close());
+hdlg.addEventListener("close", () => clearInterval(histTimer));
+hdlg.addEventListener("click", (e) => {
+  if (e.target === hdlg) hdlg.close();
+});
+$("theftClear").addEventListener("click", async () => {
+  try {
+    await API.del("/theft");
+    loadTheft();
+  } catch (err) {
+    $("theftMsg").textContent = err.message;
+  }
+});
 
 // ---- ESP32 INTEGRATION: device status pill ---------------------------------
 // Polls GET /api/device/status. The server marks the device online while the ESP32
@@ -239,10 +339,8 @@ pdlg.addEventListener("click", (e) => {
 
 loadSummary();
 loadStatus();
-loadHistory();
 setInterval(loadSummary, 5000);
 setInterval(loadStatus, 10000);
-setInterval(loadHistory, 30000);
 
 // ---- Meralco monthly rate (from /api/rates/meralco; defaults to September 2026) ----
 async function loadMeralcoRate() {
