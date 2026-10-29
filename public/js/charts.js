@@ -8,6 +8,7 @@ function drawTrend(svg, points, onHover) {
   const line = points.map((d, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(d.value).toFixed(1)}`).join('');
   const area = `${line}L${x(n - 1)},${H - p.b}L${x(0)},${H - p.b}Z`;
   const step = Math.ceil(n / 6);
+  const gid = `${svg.id || 'chart'}-fill`; // unique per chart so two charts on one page don't share a gradient
 
   let g = '';
   for (let k = 0; k <= 3; k++) {
@@ -17,9 +18,9 @@ function drawTrend(svg, points, onHover) {
   points.forEach((d, i) => { if (i % step === 0 || i === n - 1) g += `<text class="tick" x="${x(i)}" y="${H - 8}" text-anchor="middle">${d.label}</text>`; });
 
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  svg.innerHTML = `<defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+  svg.innerHTML = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0" stop-color="var(--accent)" stop-opacity=".18"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
-    ${g}<path d="${area}" fill="url(#fill)"/><path class="line" d="${line}"/>
+    ${g}<path d="${area}" fill="url(#${gid})"/><path class="line" d="${line}"/>
     <line class="cursor" y1="${p.t}" y2="${H - p.b}" visibility="hidden"/><circle class="dot" r="4" visibility="hidden"/>`;
 
   const cur = svg.querySelector('.cursor'), dot = svg.querySelector('.dot');
