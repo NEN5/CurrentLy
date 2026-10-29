@@ -1,4 +1,4 @@
-// One-time migration: creates the phone_numbers, sms_queue and sim_inbox tables.
+// One-time migration: creates the phone_numbers, sms_queue, sim_inbox and theft_events tables.
 // Run from the project folder (next to .env):  node migrate-phones.js
 // Safe to run again: it only creates tables that do not exist yet.
 require("dotenv").config();
@@ -46,6 +46,22 @@ const statements = [
     PRIMARY KEY (id),
     KEY idx_inbox_user (user_id, id),
     CONSTRAINT fk_inbox_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+  )`,
+  `CREATE TABLE IF NOT EXISTS theft_events (
+    id INT NOT NULL AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    device_id INT NOT NULL,
+    started_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at DATETIME DEFAULT NULL,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    home_w FLOAT NOT NULL DEFAULT 0,
+    line_w FLOAT NOT NULL DEFAULT 0,
+    gap_w FLOAT NOT NULL DEFAULT 0,
+    peak_gap_w FLOAT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    KEY idx_theft_user (user_id, id),
+    KEY idx_theft_device_open (device_id, ended_at),
+    CONSTRAINT fk_theft_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
   )`,
 ];
 
