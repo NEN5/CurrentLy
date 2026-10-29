@@ -1307,3 +1307,76 @@ body.sidebar-open {
     grid-template-rows: auto 1fr;
   }
 }
+
+/* History dialog (Live power + Theft log) */
+#history {
+  width: min(720px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+}
+
+#history .panel-head {
+  align-items: center;
+}
+
+#history [hidden] {
+  display: none;
+}
+
+#history .theft-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.theft-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.theft-item.ongoing {
+  border-color: var(--off);
+  background: color-mix(in srgb, var(--off) 6%, transparent);
+}
+
+.theft-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.theft-time {
+  font-weight: 700;
+}
+
+.theft-info {
+  margin-top: 2px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.theft-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.theft-badge.ongoing {
+  background: color-mix(in srgb, var(--off) 15%, transparent);
+  color: var(--off);
+}
+
+.theft-badge.ended {
+  background: color-mix(in srgb, var(--ok) 15%, transparent);
+  color: var(--ok);
+}
+
+#theftSummary.alert {
+  color: var(--off);
+  font-weight: 700;
+}
