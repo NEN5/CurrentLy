@@ -1,7 +1,7 @@
 const API = {
   async req(method, path, body) {
     const token = localStorage.getItem("token");
-    const res = await fetch("/api" + path, {
+   const res = await fetch((window.API_BASE || "") + "/api" + path, {
       method,
       headers: {
         "Content-Type": "application/json",
