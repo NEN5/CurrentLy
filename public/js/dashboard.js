@@ -51,31 +51,6 @@ document.querySelectorAll("[data-range]").forEach((b) =>
   }),
 );
 
-// ---- Live power: GET /api/sensor-data/history (average watts per bucket) -----
-let histMinutes = 60;
-async function loadHistory() {
-  try {
-    const h = await API.get("/sensor-data/history?minutes=" + histMinutes);
-    $("liveHint").textContent = `Average watts, ${h.bucketMinutes}-min buckets`;
-    drawTrend($("liveChart"), h.points, (p) => {
-      $("liveReadout").textContent = p
-        ? `${p.label}: ${Math.round(p.value)} W`
-        : "Hover or tap the chart for details";
-    });
-  } catch {
-    /* keep the last chart on a transient error */
-  }
-}
-document.querySelectorAll("[data-hist]").forEach((b) =>
-  b.addEventListener("click", () => {
-    histMinutes = Number(b.dataset.hist);
-    document
-      .querySelectorAll("[data-hist]")
-      .forEach((x) => x.setAttribute("aria-pressed", x === b));
-    loadHistory();
-  }),
-);
-
 // ---- ESP32 INTEGRATION: device status pill ---------------------------------
 // Polls GET /api/device/status. The server marks the device online while the ESP32
 // keeps POSTing to /api/sensor-data (timeout is ONLINE_TIMEOUT_MS in data/store.js).
@@ -239,10 +214,8 @@ pdlg.addEventListener("click", (e) => {
 
 loadSummary();
 loadStatus();
-loadHistory();
 setInterval(loadSummary, 5000);
 setInterval(loadStatus, 10000);
-setInterval(loadHistory, 30000);
 
 // ---- Meralco monthly rate (from /api/rates/meralco; defaults to September 2026) ----
 async function loadMeralcoRate() {
@@ -520,3 +493,106 @@ idlg.addEventListener("click", (e) => {
 });
 loadInboxCount();
 setInterval(loadInboxCount, 20000);
+
+// ---- History (sidebar > History): outage / brown-out log and theft detection log ----------------
+// GET /api/history/outages -> { events: [{ kind, start, end, minutes, minVoltage }] }
+// GET /api/history/theft   -> { events: [{ id, at, detail }] }
+const fmtWhen = (ms) =>
+  new Date(ms).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
+function fmtDuration(min) {
+  if (min < 1) return "under 1 min";
+  if (min < 60) return `${Math.round(min)} min`;
+  const h = Math.floor(min / 60),
+    m = Math.round(min % 60);
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+function logItem(title, when, detail, tone) {
+  const li = document.createElement("li");
+  li.className = "log-item " + tone;
+  const top = document.createElement("div");
+  top.className = "log-top";
+  const t = document.createElement("span");
+  t.className = "log-title";
+  t.textContent = title;
+  const w = document.createElement("span");
+  w.className = "log-time";
+  w.textContent = when;
+  top.append(t, w);
+  li.append(top);
+  if (detail) {
+    const d = document.createElement("p");
+    d.className = "log-detail";
+    d.textContent = detail;
+    li.append(d);
+  }
+  return li;
+}
+function logEmpty(list, text) {
+  const li = document.createElement("li");
+  li.className = "muted";
+  li.textContent = text;
+  list.replaceChildren(li);
+}
+async function openLog(dlg, path, listId, msgId, render, emptyText) {
+  const list = $(listId);
+  $(msgId).textContent = "";
+  logEmpty(list, "Loading…");
+  dlg.showModal();
+  if (isGuest()) {
+    logEmpty(list, "Log in to see your history.");
+    return;
+  }
+  try {
+    const { events } = await API.get(path);
+    if (!events.length) return logEmpty(list, emptyText);
+    list.replaceChildren(...events.map(render));
+  } catch (err) {
+    logEmpty(list, "");
+    $(msgId).textContent = err.message;
+  }
+}
+const odlg = $("outage"),
+  tdlg = $("theft");
+$("outageOpen").addEventListener("click", () =>
+  openLog(
+    odlg,
+    "/history/outages",
+    "outageList",
+    "outageMsg",
+    (e) => {
+      const outage = e.kind === "outage";
+      const detail = e.ongoing
+        ? "Still ongoing"
+        : `Lasted ${fmtDuration(e.minutes)}` +
+          (e.kind === "brownout" && e.minVoltage != null
+            ? ` · dropped to ${Math.round(e.minVoltage)} V`
+            : "");
+      return logItem(
+        outage ? "Power outage" : "Brown out",
+        fmtWhen(e.start),
+        detail,
+        outage ? "bad" : "warn",
+      );
+    },
+    "No outages or brown outs recorded.",
+  ),
+);
+$("theftOpen").addEventListener("click", () =>
+  openLog(
+    tdlg,
+    "/history/theft",
+    "theftList",
+    "theftMsg",
+    (e) => logItem("Possible theft detected", fmtWhen(e.at), e.detail, "bad"),
+    "No theft detected.",
+  ),
+);
+[
+  [odlg, "outageClose"],
+  [tdlg, "theftClose"],
+].forEach(([d, closeId]) => {
+  $(closeId).addEventListener("click", () => d.close());
+  d.addEventListener("click", (e) => {
+    if (e.target === d) d.close();
+  });
+});

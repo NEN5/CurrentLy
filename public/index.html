@@ -120,6 +120,47 @@
           </svg>
           Dashboard
         </button>
+        <!-- History: a dropdown group. The toggle only expands; the two sub-items open dialogs. -->
+        <button
+          id="historyToggle"
+          class="sidebar-item sidebar-group"
+          aria-expanded="false"
+          aria-controls="historyMenu"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+            <path d="M3 3v5h5M12 7v5l3 2" />
+          </svg>
+          History
+          <svg
+            class="group-chevron"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        <div id="historyMenu" class="sidebar-sub" hidden>
+          <button id="outageOpen" class="sidebar-item" data-self>
+            Power outage / Brown out
+          </button>
+          <button id="theftOpen" class="sidebar-item" data-self>
+            Theft detection log
+          </button>
+        </div>
         <button id="calcOpen" class="sidebar-item" data-self>
           <svg
             viewBox="0 0 24 24"
@@ -228,41 +269,6 @@
         <div><span id="todayKwh">0.0</span><small>kWh today</small></div>
         <div><span id="monthKwh">0.0</span><small>kWh this month</small></div>
         <div><span id="rateKwh">0.00</span><small>kWh Rate</small></div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <h2 class="sec">
-              <svg
-                class="ico"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M3 12h4l3-8 4 16 3-8h4" /></svg
-              >Live power
-            </h2>
-            <p id="liveHint" class="muted">Average watts, 1-min buckets</p>
-          </div>
-          <div class="seg">
-            <button data-hist="60" aria-pressed="true">1h</button>
-            <button data-hist="360" aria-pressed="false">6h</button>
-            <button data-hist="1440" aria-pressed="false">24h</button>
-          </div>
-        </div>
-        <p id="liveReadout" class="readout muted">
-          Hover or tap the chart for details
-        </p>
-        <svg
-          id="liveChart"
-          role="img"
-          aria-label="Power in watts over time"
-        ></svg>
       </section>
 
       <section class="panel">
@@ -452,6 +458,32 @@
       </p>
       <ul id="inboxList" class="inbox-list"></ul>
       <p id="inboxMsg" class="error" role="alert"></p>
+    </dialog>
+
+    <dialog id="outage">
+      <div class="dlg-head">
+        <h2>Power outage / Brown out</h2>
+        <button id="outageClose" class="link" aria-label="Close">✕</button>
+      </div>
+      <p class="muted">
+        Times your meter lost mains power or stopped reporting, or saw the
+        voltage sag below a safe level. Kept for 14 days.
+      </p>
+      <ul id="outageList" class="log-list"></ul>
+      <p id="outageMsg" class="error" role="alert"></p>
+    </dialog>
+
+    <dialog id="theft">
+      <div class="dlg-head">
+        <h2>Theft detection log</h2>
+        <button id="theftClose" class="link" aria-label="Close">✕</button>
+      </div>
+      <p class="muted">
+        Every time your meter flagged possible theft. Your verified phone
+        numbers were texted at the same time.
+      </p>
+      <ul id="theftList" class="log-list"></ul>
+      <p id="theftMsg" class="error" role="alert"></p>
     </dialog>
 
     <dialog id="settings">

@@ -30,6 +30,14 @@
     const item = e.target.closest(".sidebar-item");
     if (!item) return;
 
+    // The History group only expands / collapses; the sidebar stays open.
+    if (item.classList.contains("sidebar-group")) {
+      const open = item.getAttribute("aria-expanded") !== "true";
+      item.setAttribute("aria-expanded", String(open));
+      document.getElementById(item.getAttribute("aria-controls")).hidden = !open;
+      return;
+    }
+
     const target = item.dataset.target
       ? document.getElementById(item.dataset.target)
       : null;

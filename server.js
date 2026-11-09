@@ -32,6 +32,9 @@ app.use("/api/device", phones.deviceRouter); // ESP32: sync numbers + OTP texts,
 const inbox = require("./routes/inbox");
 app.use("/api/inbox", inbox.userRouter); // texts the meter's SIM received (bell, login)
 app.use("/api/device", inbox.deviceRouter); // ESP32: upload texts received by the SIM
+const history = require("./routes/history");
+app.use("/api/history", history.userRouter); // outage / brown-out + theft logs (login)
+app.use("/api/device", history.deviceRouter); // ESP32: report a theft detection
 app.use("/api/tariff", require("./routes/tariff")); // your own rate per kWh (default: Meralco's rate)
 app.use("/api/rates", require("./routes/rates")); // Meralco monthly rate (Tavily)
 
