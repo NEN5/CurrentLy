@@ -181,43 +181,37 @@ a {
   min-height: 1.4em;
 }
 
-/* charts (usage trend and live power share the same look) */
-#chart,
-#liveChart {
+/* chart */
+#chart {
   width: 100%;
   height: auto;
   display: block;
   touch-action: pan-y;
 }
 
-#chart .grid,
-#liveChart .grid {
+#chart .grid {
   stroke: var(--line);
   stroke-width: 1;
 }
 
-#chart .tick,
-#liveChart .tick {
+#chart .tick {
   fill: var(--muted);
   font-size: 11px;
 }
 
-#chart .line,
-#liveChart .line {
+#chart .line {
   fill: none;
   stroke: var(--accent);
   stroke-width: 2;
   stroke-linejoin: round;
 }
 
-#chart .cursor,
-#liveChart .cursor {
+#chart .cursor {
   stroke: var(--muted);
   stroke-dasharray: 3 3;
 }
 
-#chart .dot,
-#liveChart .dot {
+#chart .dot {
   fill: var(--accent);
   stroke: var(--surface);
   stroke-width: 2;
