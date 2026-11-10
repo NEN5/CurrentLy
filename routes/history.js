@@ -197,6 +197,9 @@ async function enrich(userId, e, { rate, currency }) {
   return out;
 }
 
+const outageCache = new Map(); // userId -> { at, body }  (the page polls; keep the database calm)
+const OUTAGE_CACHE_MS = 15000;
+
 userRouter.get(
   "/outages",
   requireAuth,
@@ -270,12 +273,19 @@ userRouter.get(
     );
     kept.sort((a, b) => b.start - a.start);
     const list = kept.slice(0, 100);
+    const hit = outageCache.get(req.user.id);
+    if (hit && Date.now() - hit.at < OUTAGE_CACHE_MS) {
+      res.set("Cache-Control", "no-store");
+      return res.json(hit.body);
+    }
     const tariff = await userRate(req.user.id);
     const detailed = await Promise.all(
       list.slice(0, DETAIL_EVENTS).map((e) => enrich(req.user.id, e, tariff)),
     );
+    const body = { events: detailed.concat(list.slice(DETAIL_EVENTS)) };
+    outageCache.set(req.user.id, { at: Date.now(), body });
     res.set("Cache-Control", "no-store");
-    res.json({ events: detailed.concat(list.slice(DETAIL_EVENTS)) });
+    res.json(body);
   }),
 );
 

@@ -8,11 +8,12 @@ function drawTrend(svg, points, onHover) {
   const line = points.map((d, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(d.value).toFixed(1)}`).join('');
   const area = `${line}L${x(n - 1)},${H - p.b}L${x(0)},${H - p.b}Z`;
   const step = Math.ceil(n / 6);
+  const tickText = v => (max < 1 ? v.toFixed(2) : max < 10 ? v.toFixed(1) : String(Math.round(v)));
 
   let g = '';
   for (let k = 0; k <= 3; k++) {
     const v = max * k / 3, yy = y(v);
-    g += `<line class="grid" x1="${p.l}" x2="${W - p.r}" y1="${yy}" y2="${yy}"/><text class="tick" x="${p.l - 6}" y="${yy + 4}" text-anchor="end">${Math.round(v)}</text>`;
+    g += `<line class="grid" x1="${p.l}" x2="${W - p.r}" y1="${yy}" y2="${yy}"/><text class="tick" x="${p.l - 6}" y="${yy + 4}" text-anchor="end">${tickText(v)}</text>`;
   }
   points.forEach((d, i) => { if (i % step === 0 || i === n - 1) g += `<text class="tick" x="${x(i)}" y="${H - 8}" text-anchor="middle">${d.label}</text>`; });
 

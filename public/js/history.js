@@ -1,4 +1,4 @@
-// History page: outage / brown-out log and theft detection log.
+// History page: power events (outages / brown outs) and the theft log. Refreshes itself.
 // GET /api/history/outages -> { events: [{ kind, start, end, minutes, minVoltage, ongoing, lowVoltage,
 //                                          before, after, afterPeak, kwhToday, kwhMonth, bill, projectedBill, currency }] }
 // GET /api/history/theft   -> { events: [{ id, at, detail }] }
@@ -10,14 +10,25 @@
     return;
   }
 
+  const POLL_MS = 20000; // the meter posts every 20 s, so faster than this finds nothing new
+
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
     if (cls) n.className = cls;
     if (text !== undefined) n.textContent = text;
     return n;
   };
-  const fmtWhen = (ms) =>
-    new Date(ms).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
+  const clock = (ms) =>
+    new Date(ms).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
+  const clockSec = (ms) =>
+    new Date(ms).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit", second: "2-digit" });
+  const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
+  function dayLabel(ms) {
+    const now = Date.now();
+    if (sameDay(ms, now)) return "Today";
+    if (sameDay(ms, now - 86400000)) return "Yesterday";
+    return new Date(ms).toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric" });
+  }
   function fmtDuration(min) {
     if (min < 1) return "under 1 min";
     if (min < 60) return `${Math.round(min)} min`;
@@ -30,157 +41,180 @@
   const kwh = (n) => num(n, n < 1 ? 3 : 1);
   const money = (n, c) => `${c || "₱"}${num(n, 2)}`;
   const wv = (r) => `${Math.round(r.watts)} W · ${Math.round(r.voltage)} V`;
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-  const empty = (list, text) => list.replaceChildren(el("li", "hx-empty", text));
-  const tile = (value, label) => {
-    const t = el("div", "hx-tile");
-    t.append(el("b", "", value), el("span", "", label));
-    return t;
-  };
-  const stat = (label, value) => {
-    const s = el("div", "hx-stat");
-    s.append(el("span", "", label), el("b", "", value));
-    return s;
-  };
-
-  // ---- outages --------------------------------------------------------------------------------
-  function outageCard(e) {
-    const isOutage = e.kind === "outage";
-    const card = el("li", "hx-card" + (isOutage ? "" : " warn"));
-
-    const left = el("div");
-    const title = el("div", "hx-title", isOutage ? "Power outage" : "Brown out");
-    if (e.ongoing) title.append(el("span", "hx-badge", "Still ongoing"));
-    if (e.afterPeak && e.afterPeak.surge)
-      title.append(el("span", "hx-badge surge", "⚠ Voltage surge"));
-    left.append(title);
-    let when = fmtWhen(e.start);
-    if (!e.ongoing && e.end && isOutage && !e.lowVoltage) when += `  →  power back ${fmtWhen(e.end)}`;
-    left.append(el("div", "hx-when", when));
-
-    const dur = el("div", "hx-dur", e.ongoing ? "ongoing" : fmtDuration(e.minutes));
-    dur.append(
-      el(
-        "small",
-        "",
-        e.lowVoltage
-          ? "voltage near 0 V"
-          : e.kind === "brownout" && e.minVoltage != null
-            ? `dropped to ${Math.round(e.minVoltage)} V`
-            : "duration",
-      ),
-    );
-    const head = el("div", "hx-head");
-    head.append(left, dur);
-    card.append(head);
-
-    const stats = el("div", "hx-stats");
-    if (e.before) stats.append(stat("Before", wv(e.before)));
-    if (e.after) stats.append(stat("When power returned", wv(e.after)));
-    if (e.afterPeak)
-      stats.append(stat(`Peak in next ${e.afterPeak.minutes} min`, wv(e.afterPeak)));
-    if (e.kwhMonth != null) {
-      if (e.kwhToday != null) stats.append(stat("Used today by then", `${kwh(e.kwhToday)} kWh`));
-      stats.append(stat("Used this month by then", `${kwh(e.kwhMonth)} kWh`));
-      stats.append(stat("Estimated bill", money(e.bill, e.currency)));
-      stats.append(stat("Projected bill", money(e.projectedBill, e.currency)));
+  // Groups events (newest first) under a heading per day, then builds each row with `row(e)`.
+  function renderLog(host, events, timeOf, row, emptyText) {
+    if (!events.length) return host.replaceChildren(el("p", "hx-empty", emptyText));
+    const nodes = [];
+    let last = null;
+    for (const e of events) {
+      const label = dayLabel(timeOf(e));
+      if (label !== last) {
+        nodes.push(el("h3", "hx-day", label));
+        last = label;
+      }
+      nodes.push(row(e));
     }
-    if (stats.children.length) card.append(stats);
-    return card;
+    host.replaceChildren(...nodes);
+  }
+
+  // ---- power events ---------------------------------------------------------------------------
+  function outageRow(e) {
+    const isOutage = e.kind === "outage";
+    const r = el("div", "hx-row");
+    r.append(el("span", "hx-time", clock(e.start)));
+
+    const what = el("div", "hx-what");
+    what.append(el("b", isOutage ? "out" : "brown", isOutage ? "Power outage" : "Brown out"));
+    if (e.ongoing) what.append(el("span", "sub", " · still ongoing"));
+    else if (isOutage && e.end && !e.lowVoltage) what.append(el("span", "sub", ` · power back at ${clock(e.end)}`));
+    else if (e.lowVoltage) what.append(el("span", "sub", " · voltage fell to near 0 V"));
+    else if (e.minVoltage != null) what.append(el("span", "sub", ` · dropped to ${Math.round(e.minVoltage)} V`));
+    r.append(what);
+
+    r.append(el("span", e.ongoing ? "hx-dur live" : "hx-dur", e.ongoing ? "ongoing" : fmtDuration(e.minutes)));
+
+    const dl = el("dl", "hx-data");
+    const add = (label, value, cls) => {
+      dl.append(el("dt", "", label));
+      dl.append(el("dd", cls || "", value));
+    };
+    if (e.before) add("Before", wv(e.before));
+    if (e.after) add("When power returned", wv(e.after));
+    if (e.afterPeak) {
+      add(`Peak in next ${e.afterPeak.minutes} min`, wv(e.afterPeak));
+      if (e.afterPeak.surge) add("Voltage surge", `${Math.round(e.afterPeak.voltage)} V when power came back`, "warn");
+    }
+    if (e.kwhMonth != null) {
+      add(
+        "Used by then",
+        (e.kwhToday != null ? `${kwh(e.kwhToday)} kWh today · ` : "") + `${kwh(e.kwhMonth)} kWh this month`,
+      );
+      add("Bill", `${money(e.bill, e.currency)} so far · ${money(e.projectedBill, e.currency)} projected`);
+    }
+    if (dl.children.length) r.append(dl);
+    return r;
   }
 
   let outages = [];
-  let filter = "all";
   function renderOutages() {
-    const list = $("outageList");
-    const shown = outages.filter((e) => filter === "all" || e.kind === filter);
-    if (!shown.length)
-      return empty(
-        list,
-        outages.length ? "Nothing in this filter." : "No outages or brown outs recorded.",
-      );
-    list.replaceChildren(...shown.map(outageCard));
+    const kind = $("kind").value;
+    const shown = outages.filter((e) => kind === "all" || e.kind === kind);
+    renderLog(
+      $("outageList"),
+      shown,
+      (e) => e.start,
+      outageRow,
+      outages.length ? "Nothing matches this filter." : "No outages or brown outs recorded.",
+    );
   }
   function summarizeOutages() {
     const out = outages.filter((e) => e.kind === "outage");
     const brown = outages.filter((e) => e.kind === "brownout");
     const done = out.filter((e) => !e.ongoing);
-    const total = done.reduce((s, e) => s + e.minutes, 0);
-    const longest = done.reduce((m, e) => Math.max(m, e.minutes), 0);
-    $("outageSummary").replaceChildren(
-      tile(String(out.length), "Power outages"),
-      tile(String(brown.length), "Brown outs"),
-      tile(done.length ? fmtDuration(total) : "—", "Total downtime"),
-      tile(done.length ? fmtDuration(longest) : "—", "Longest outage"),
-    );
+    const down = done.reduce((s, e) => s + e.minutes, 0);
+    const parts = [];
+    if (out.some((e) => e.ongoing)) parts.push("Power appears to be out right now.");
+    if (!outages.length) parts.push("No outages or brown outs in the last 14 days.");
+    else {
+      parts.push(
+        `${plural(out.length, "outage", "outages")} and ${plural(brown.length, "brown out", "brown outs")} in the last 14 days` +
+          (done.length ? `, ${fmtDuration(down)} without power in total.` : "."),
+      );
+    }
+    $("outageSummary").textContent = parts.join(" ");
   }
 
   // ---- theft ----------------------------------------------------------------------------------
-  function renderTheft(events) {
-    const list = $("theftList");
-    $("theftSummary").replaceChildren(
-      tile(String(events.length), "Possible theft events"),
-      tile(events.length ? fmtWhen(events[0].at) : "—", "Most recent"),
-    );
-    if (!events.length) return empty(list, "No theft detected.");
-    list.replaceChildren(
-      ...events.map((e) => {
-        const card = el("li", "hx-card");
-        const head = el("div", "hx-head");
-        const left = el("div");
-        left.append(el("div", "hx-title", "Possible theft detected"), el("div", "hx-when", fmtWhen(e.at)));
-        head.append(left);
-        card.append(head);
-        if (e.detail) card.append(el("p", "hx-detail", e.detail));
-        return card;
-      }),
+  let theft = [];
+  function renderTheft() {
+    $("theftSummary").textContent = theft.length
+      ? `${plural(theft.length, "possible theft event", "possible theft events")}. Most recent: ${dayLabel(theft[0].at)}, ${clock(theft[0].at)}.`
+      : "No theft detected.";
+    renderLog(
+      $("theftList"),
+      theft,
+      (e) => e.at,
+      (e) => {
+        const r = el("div", "hx-row");
+        r.append(el("span", "hx-time", clock(e.at)));
+        r.append(el("div", "hx-what", ""));
+        r.lastChild.append(el("b", "out", "Possible theft detected"));
+        r.append(el("span", "hx-dur", ""));
+        if (e.detail) r.append(el("p", "hx-text", e.detail));
+        return r;
+      },
+      "No theft detected.",
     );
   }
 
-  // ---- loading --------------------------------------------------------------------------------
-  const loaded = {};
-  async function load(kind) {
+  // ---- loading and self-refresh -----------------------------------------------------------------
+  const kinds = {
+    outages: { data: () => outages, set: (v) => (outages = v), draw: () => (summarizeOutages(), renderOutages()), list: "outageList" },
+    theft: { data: () => theft, set: (v) => (theft = v), draw: () => renderTheft(), list: "theftList" },
+  };
+  const seen = {}; // kind -> JSON of what is on screen, so the page only redraws when something changed
+  let active = "outages";
+  let timer = null;
+
+  function stamp(kind, text, stale) {
+    const s = document.querySelector(`.hx-updated[data-for="${kind}"]`);
+    s.textContent = text;
+    s.classList.toggle("stale", !!stale);
+  }
+
+  async function refresh(kind) {
+    const k = kinds[kind];
     const msg = $("hxMsg");
-    msg.textContent = "";
-    const list = $(kind === "outages" ? "outageList" : "theftList");
-    if (token === "guest") return empty(list, "Log in to see your history.");
-    if (loaded[kind]) return;
-    empty(list, "Loading…");
+    if (token === "guest") {
+      $(k.list).replaceChildren(el("p", "hx-empty", "Log in to see your history."));
+      return;
+    }
     try {
       const { events } = await API.get("/history/" + kind);
       if (!Array.isArray(events))
-        throw new Error(
-          "Could not reach the server. Check the connection and that the site points at your backend.",
-        );
-      loaded[kind] = true;
-      if (kind === "outages") {
-        outages = events;
-        summarizeOutages();
-        renderOutages();
-      } else renderTheft(events);
+        throw new Error("Could not reach the server. Check the connection and that the site points at your backend.");
+      msg.textContent = "";
+      const sig = JSON.stringify(events);
+      if (sig !== seen[kind]) {
+        seen[kind] = sig;
+        k.set(events);
+        k.draw();
+      }
+      stamp(kind, `Updated ${clockSec(Date.now())} · refreshes automatically`, false);
     } catch (err) {
-      empty(list, "");
-      msg.textContent = err.message;
+      if (seen[kind] === undefined) {
+        msg.textContent = err.message;
+        $(k.list).replaceChildren();
+      } else stamp(kind, "Connection lost, retrying…", true); // keep showing what we already have
     }
   }
 
+  function schedule() {
+    clearInterval(timer);
+    timer = setInterval(() => {
+      if (!document.hidden) refresh(active);
+    }, POLL_MS);
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refresh(active); // catch up as soon as the tab is looked at again
+  });
+
   function showTab(name) {
+    active = name;
     for (const b of document.querySelectorAll(".hx-tabs button"))
       b.setAttribute("aria-selected", String(b.dataset.tab === name));
     $("paneOutages").hidden = name !== "outages";
     $("paneTheft").hidden = name !== "theft";
     history.replaceState(null, "", "#" + name);
-    load(name);
+    if (seen[name] === undefined) $(kinds[name].list).replaceChildren(el("p", "hx-empty", "Loading…"));
+    refresh(name);
+    schedule();
   }
   for (const b of document.querySelectorAll(".hx-tabs button"))
     b.addEventListener("click", () => showTab(b.dataset.tab));
-  for (const c of document.querySelectorAll(".hx-chip"))
-    c.addEventListener("click", () => {
-      filter = c.dataset.filter;
-      for (const o of document.querySelectorAll(".hx-chip"))
-        o.setAttribute("aria-pressed", String(o === c));
-      renderOutages();
-    });
+  $("kind").addEventListener("change", renderOutages);
 
   showTab(location.hash === "#theft" ? "theft" : "outages");
 })();

@@ -156,6 +156,7 @@ async function computeSummary(userId) {
       rateCustom = false,
       currency = "₱";
     const perDay = new Map(); // 'YYYY-MM-DD' (PH) -> kWh
+    const perHour = new Map(); // 'YYYY-MM-DD HH' (PH) -> kWh, last ~24 h
     let livePower = null;
 
     const ph = new Date(Date.now() + PH_OFFSET_MS);
@@ -206,6 +207,20 @@ async function computeSummary(userId) {
       );
       for (const r of days) perDay.set(r.day, Number(r.kwh) || 0);
 
+      // Hourly kWh for the last 24 h (same delta method; 2 extra hours so the first hour's delta is kept).
+      const [hrs] = await db.execute(
+        `SELECT hr, SUM(delta) AS kwh FROM (
+           SELECT DATE_FORMAT(DATE_ADD(sr.recorded_at, INTERVAL 8 HOUR), '%Y-%m-%d %H') AS hr,
+                  GREATEST(sr.total_kwh - LAG(sr.total_kwh) OVER (
+                    PARTITION BY sr.device_id ORDER BY sr.recorded_at, sr.id), 0) AS delta
+           FROM sensor_readings sr
+           JOIN devices d ON d.id = sr.device_id
+           WHERE d.user_id = ? AND sr.recorded_at >= NOW() - INTERVAL 26 HOUR
+         ) x WHERE delta IS NOT NULL GROUP BY hr`,
+        [userId],
+      );
+      for (const r of hrs) perHour.set(r.hr, Number(r.kwh) || 0);
+
       const [live] = await db.execute(
         `SELECT sr.active_power_watts AS w FROM sensor_readings sr
          JOIN devices d ON d.id = sr.device_id
@@ -216,6 +231,12 @@ async function computeSummary(userId) {
       if (live.length) livePower = Number(live[0].w);
     }
 
+    const hourly = [];
+    for (let i = 23; i >= 0; i--) {
+      const t = new Date(ph.getTime() - i * 3600000);
+      const hh = String(t.getUTCHours()).padStart(2, "0");
+      hourly.push({ label: `${hh}:00`, value: perHour.get(`${ymd(t)} ${hh}`) || 0 });
+    }
     const daily = [];
     for (let i = 29; i >= 0; i--) {
       const d = new Date(ph.getTime() - i * 86400000);
@@ -250,6 +271,7 @@ async function computeSummary(userId) {
       projectedBill: projectedKwh * rate,
       todayKwh: perDay.get(ymd(ph)) || 0,
       livePower,
+      hourly,
       daily,
       monthly,
     };

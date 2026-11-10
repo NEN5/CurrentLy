@@ -13,6 +13,12 @@ const kwh = (n) =>
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   });
+// Small amounts (an hour's use) keep 3 decimals so they do not show as 0.0.
+const kwhFine = (n) =>
+  n.toLocaleString("en-PH", {
+    minimumFractionDigits: n < 1 ? 3 : 1,
+    maximumFractionDigits: n < 1 ? 3 : 1,
+  });
 
 // ---- Summary: bill, kWh, trend ---------------------------------------------
 async function loadSummary() {
@@ -33,11 +39,14 @@ async function loadSummary() {
 function renderChart() {
   const s = state.summary;
   if (!s) return;
-  $("chartHint").textContent =
-    state.range === "daily" ? "Last 30 days" : "Last 6 months";
-  drawTrend($("chart"), s[state.range], (p) => {
+  $("chartHint").textContent = {
+    hourly: "Last 24 hours",
+    daily: "Last 30 days",
+    monthly: "Last 6 months",
+  }[state.range];
+  drawTrend($("chart"), s[state.range] || [], (p) => {
     $("readout").textContent = p
-      ? `${p.label}: ${kwh(p.value)} kWh (${money(p.value * s.rate, s.currency)})`
+      ? `${p.label}: ${kwhFine(p.value)} kWh (${money(p.value * s.rate, s.currency)})`
       : "Hover or tap the chart for details";
   });
 }

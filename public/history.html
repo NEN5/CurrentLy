@@ -22,40 +22,45 @@
     </header>
 
     <main class="hx-wrap">
-      <div class="hx-tabs" role="tablist" aria-label="History type">
+      <nav class="hx-tabs" role="tablist" aria-label="History type">
         <button id="tabOutages" role="tab" aria-selected="true" data-tab="outages">
-          Power outage / Brown out
+          Power events
         </button>
         <button id="tabTheft" role="tab" aria-selected="false" data-tab="theft">
-          Theft detection log
+          Theft log
         </button>
-      </div>
+      </nav>
 
       <p id="hxMsg" class="error" role="alert"></p>
 
       <section id="paneOutages" role="tabpanel" aria-labelledby="tabOutages">
-        <div id="outageSummary" class="hx-summary"></div>
-        <div class="hx-filters" role="group" aria-label="Filter">
-          <button class="hx-chip" data-filter="all" aria-pressed="true">All</button>
-          <button class="hx-chip" data-filter="outage" aria-pressed="false">
-            Outages
-          </button>
-          <button class="hx-chip" data-filter="brownout" aria-pressed="false">
-            Brown outs
-          </button>
+        <p id="outageSummary" class="hx-summary"></p>
+        <div class="hx-bar">
+          <label class="hx-filter"
+            >Show
+            <select id="kind">
+              <option value="all">all events</option>
+              <option value="outage">power outages</option>
+              <option value="brownout">brown outs</option>
+            </select>
+          </label>
+          <span class="hx-updated" data-for="outages" aria-live="off"></span>
         </div>
-        <ol id="outageList" class="hx-list"></ol>
-        <p class="muted hx-note">
-          Shows the last 14 days. A power outage is logged once the meter
-          reports again, a gap of 5 minutes or more. Bill figures use your
-          current rate.
+        <div id="outageList" class="hx-log"></div>
+        <p class="hx-note">
+          Last 14 days. An outage is logged once the meter reports again after
+          a gap of 5 minutes or more. Bill figures use your current rate.
         </p>
       </section>
 
       <section id="paneTheft" role="tabpanel" aria-labelledby="tabTheft" hidden>
-        <div id="theftSummary" class="hx-summary"></div>
-        <ol id="theftList" class="hx-list"></ol>
-        <p class="muted hx-note">
+        <p id="theftSummary" class="hx-summary"></p>
+        <div class="hx-bar">
+          <span></span>
+          <span class="hx-updated" data-for="theft" aria-live="off"></span>
+        </div>
+        <div id="theftList" class="hx-log"></div>
+        <p class="hx-note">
           Logged when the LINE meter reads noticeably more than the HOME meter
           for about 10 seconds.
         </p>
