@@ -506,6 +506,12 @@ function fmtDuration(min) {
     m = Math.round(min % 60);
   return m ? `${h} h ${m} min` : `${h} h`;
 }
+// Like kwh(), but small amounts keep 3 decimals so they do not show as 0.0.
+const kwhFine = (n) =>
+  n.toLocaleString("en-PH", {
+    minimumFractionDigits: n < 1 ? 3 : 1,
+    maximumFractionDigits: n < 1 ? 3 : 1,
+  });
 function logItem(title, when, detail, tone) {
   const li = document.createElement("li");
   li.className = "log-item " + tone;
@@ -586,8 +592,8 @@ $("outageOpen").addEventListener("click", () =>
         );
       if (e.kwhMonth != null) {
         lines.push(
-          (e.kwhToday != null ? `Used by then: ${kwh(e.kwhToday)} kWh today · ` : "Used by then: ") +
-            `${kwh(e.kwhMonth)} kWh this month`,
+          (e.kwhToday != null ? `Used by then: ${kwhFine(e.kwhToday)} kWh today · ` : "Used by then: ") +
+            `${kwhFine(e.kwhMonth)} kWh this month`,
         );
         lines.push(
           `Estimated bill ${money(e.bill, e.currency)} · projected ${money(e.projectedBill, e.currency)}`,

@@ -242,8 +242,21 @@ userRouter.get(
     for (const e of islands(sag.map(conv), "brownout"))
       events.push({ ...e, minutes: (e.end - e.start) / 60000 });
 
-    events.sort((a, b) => b.start - a.start);
-    const list = events.slice(0, 100);
+    // A sag right before an outage (the meter dying) or right after it (power coming back) is part of
+    // that outage, not a separate brown out.
+    const outs = events.filter((e) => e.kind === "outage");
+    const near = LOW_JOIN_SEC * 1000;
+    const kept = events.filter(
+      (b) =>
+        b.kind !== "brownout" ||
+        !outs.some(
+          (o) =>
+            (b.end >= o.start - near && b.start <= o.start) ||
+            (o.end && b.start >= o.end && b.start <= o.end + near),
+        ),
+    );
+    kept.sort((a, b) => b.start - a.start);
+    const list = kept.slice(0, 100);
     const tariff = await userRate(req.user.id);
     const detailed = await Promise.all(
       list.slice(0, DETAIL_EVENTS).map((e) => enrich(req.user.id, e, tariff)),
