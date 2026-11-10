@@ -65,12 +65,13 @@
     const r = el("div", "hx-row");
     r.append(el("span", "hx-time", clock(e.start)));
 
+    // One kind of entry; the text after the title says whether power was lost or only sagged.
     const what = el("div", "hx-what");
-    what.append(el("b", isOutage ? "out" : "brown", isOutage ? "Power outage" : "Brown out"));
+    what.append(el("b", "out", "Power outage / brown out"));
     if (e.ongoing) what.append(el("span", "sub", " · still ongoing"));
     else if (isOutage && e.end && !e.lowVoltage) what.append(el("span", "sub", ` · power back at ${clock(e.end)}`));
     else if (e.lowVoltage) what.append(el("span", "sub", " · voltage fell to near 0 V"));
-    else if (e.minVoltage != null) what.append(el("span", "sub", ` · dropped to ${Math.round(e.minVoltage)} V`));
+    else if (e.minVoltage != null) what.append(el("span", "sub", ` · voltage dropped to ${Math.round(e.minVoltage)} V`));
     r.append(what);
 
     r.append(el("span", e.ongoing ? "hx-dur live" : "hx-dur", e.ongoing ? "ongoing" : fmtDuration(e.minutes)));
@@ -99,30 +100,19 @@
 
   let outages = [];
   function renderOutages() {
-    const kind = $("kind").value;
-    const shown = outages.filter((e) => kind === "all" || e.kind === kind);
-    renderLog(
-      $("outageList"),
-      shown,
-      (e) => e.start,
-      outageRow,
-      outages.length ? "Nothing matches this filter." : "No outages or brown outs recorded.",
-    );
+    renderLog($("outageList"), outages, (e) => e.start, outageRow, "No outages or brown outs recorded.");
   }
   function summarizeOutages() {
-    const out = outages.filter((e) => e.kind === "outage");
-    const brown = outages.filter((e) => e.kind === "brownout");
-    const done = out.filter((e) => !e.ongoing);
+    const done = outages.filter((e) => e.kind === "outage" && !e.ongoing);
     const down = done.reduce((s, e) => s + e.minutes, 0);
     const parts = [];
-    if (out.some((e) => e.ongoing)) parts.push("Power appears to be out right now.");
-    if (!outages.length) parts.push("No outages or brown outs in the last 14 days.");
-    else {
-      parts.push(
-        `${plural(out.length, "outage", "outages")} and ${plural(brown.length, "brown out", "brown outs")} in the last 14 days` +
-          (done.length ? `, ${fmtDuration(down)} without power in total.` : "."),
-      );
-    }
+    if (outages.some((e) => e.ongoing)) parts.push("Power appears to be out right now.");
+    parts.push(
+      outages.length
+        ? `${plural(outages.length, "power event", "power events")} in the last 14 days` +
+            (done.length ? `, ${fmtDuration(down)} without power in total.` : ".")
+        : "No outages or brown outs in the last 14 days.",
+    );
     $("outageSummary").textContent = parts.join(" ");
   }
 
@@ -214,7 +204,6 @@
   }
   for (const b of document.querySelectorAll(".hx-tabs button"))
     b.addEventListener("click", () => showTab(b.dataset.tab));
-  $("kind").addEventListener("change", renderOutages);
 
   showTab(location.hash === "#theft" ? "theft" : "outages");
 })();
