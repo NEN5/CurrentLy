@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>History | CurrentLy</title>
+    <link rel="icon" type="image/png" href="logo_favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/history.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <div class="nav-left">
+        <a class="hx-back" href="index.html">&larr; Dashboard</a>
+        <strong class="brand">History</strong>
+      </div>
+    </header>
+
+    <main class="hx-wrap">
+      <div class="hx-tabs" role="tablist" aria-label="History type">
+        <button id="tabOutages" role="tab" aria-selected="true" data-tab="outages">
+          Power outage / Brown out
+        </button>
+        <button id="tabTheft" role="tab" aria-selected="false" data-tab="theft">
+          Theft detection log
+        </button>
+      </div>
+
+      <p id="hxMsg" class="error" role="alert"></p>
+
+      <section id="paneOutages" role="tabpanel" aria-labelledby="tabOutages">
+        <div id="outageSummary" class="hx-summary"></div>
+        <div class="hx-filters" role="group" aria-label="Filter">
+          <button class="hx-chip" data-filter="all" aria-pressed="true">All</button>
+          <button class="hx-chip" data-filter="outage" aria-pressed="false">
+            Outages
+          </button>
+          <button class="hx-chip" data-filter="brownout" aria-pressed="false">
+            Brown outs
+          </button>
+        </div>
+        <ol id="outageList" class="hx-list"></ol>
+        <p class="muted hx-note">
+          Shows the last 14 days. A power outage is logged once the meter
+          reports again, a gap of 5 minutes or more. Bill figures use your
+          current rate.
+        </p>
+      </section>
+
+      <section id="paneTheft" role="tabpanel" aria-labelledby="tabTheft" hidden>
+        <div id="theftSummary" class="hx-summary"></div>
+        <ol id="theftList" class="hx-list"></ol>
+        <p class="muted hx-note">
+          Logged when the LINE meter reads noticeably more than the HOME meter
+          for about 10 seconds.
+        </p>
+      </section>
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/history.js"></script>
+  </body>
+</html>
