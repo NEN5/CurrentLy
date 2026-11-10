@@ -60,7 +60,7 @@ form.addEventListener('submit', async e => {
   btn.disabled = true; btn.classList.add('loading');
   const label = btn.textContent; btn.textContent = page === 'login' ? 'Logging in…' : 'Creating account…';
   try {
-   const res = await fetch((window.API_BASE || '') + '/api/auth/' + page, {
+    const res = await fetch((window.API_BASE || '') + '/api/auth/' + page, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(v)
     });
     const data = await res.json().catch(() => ({}));

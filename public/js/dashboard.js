@@ -544,6 +544,10 @@ async function openLog(dlg, path, listId, msgId, render, emptyText) {
   }
   try {
     const { events } = await API.get(path);
+    if (!Array.isArray(events))
+      throw new Error(
+        "Could not reach the server. Check the connection and that the site points at your backend.",
+      );
     if (!events.length) return logEmpty(list, emptyText);
     list.replaceChildren(...events.map(render));
   } catch (err) {
