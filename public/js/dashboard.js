@@ -569,8 +569,10 @@ $("outageOpen").addEventListener("click", () =>
       const lines = [
         e.ongoing
           ? "Still ongoing"
-          : (outage && e.end ? `Power back ${fmtWhen(e.end)} · ` : "") +
-            `Lasted ${fmtDuration(e.minutes)}` +
+          : e.lowVoltage
+            ? `Voltage fell to near 0 V for ${fmtDuration(e.minutes)}`
+            : (outage && e.end ? `Power back ${fmtWhen(e.end)} · ` : "") +
+              `Lasted ${fmtDuration(e.minutes)}` +
             (e.kind === "brownout" && e.minVoltage != null
               ? ` · dropped to ${Math.round(e.minVoltage)} V`
               : ""),

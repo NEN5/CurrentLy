@@ -153,7 +153,7 @@ async function enrich(userId, e, { rate, currency }) {
     out.bill = k.month * rate;
     out.projectedBill = (k.month / k.dom) * k.daysInMonth * rate;
 
-    if (e.kind === "outage" && e.end) {
+    if (e.kind === "outage" && e.end && !e.lowVoltage) {
       const [[a]] = await db.execute(
         `SELECT sr.voltage AS v, sr.active_power_watts AS w FROM sensor_readings sr
          JOIN devices d ON d.id = sr.device_id
@@ -238,7 +238,7 @@ userRouter.get(
     const sag = low.filter((r) => Number(r.v) >= LOST_V);
     const conv = (r) => ({ t: Number(r.t), v: Number(r.v) });
     for (const e of islands(lost.map(conv), "outage"))
-      events.push({ ...e, minutes: (e.end - e.start) / 60000, minVoltage: null });
+      events.push({ ...e, minutes: (e.end - e.start) / 60000, minVoltage: null, lowVoltage: true });
     for (const e of islands(sag.map(conv), "brownout"))
       events.push({ ...e, minutes: (e.end - e.start) / 60000 });
 
