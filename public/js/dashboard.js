@@ -519,10 +519,10 @@ function logItem(title, when, detail, tone) {
   w.textContent = when;
   top.append(t, w);
   li.append(top);
-  if (detail) {
+  for (const line of [].concat(detail || [])) {
     const d = document.createElement("p");
     d.className = "log-detail";
-    d.textContent = detail;
+    d.textContent = line;
     li.append(d);
   }
   return li;
@@ -561,16 +561,36 @@ $("outageOpen").addEventListener("click", () =>
     "outageMsg",
     (e) => {
       const outage = e.kind === "outage";
-      const detail = e.ongoing
-        ? "Still ongoing"
-        : `Lasted ${fmtDuration(e.minutes)}` +
-          (e.kind === "brownout" && e.minVoltage != null
-            ? ` · dropped to ${Math.round(e.minVoltage)} V`
-            : "");
+      const w = (r) => `${Math.round(r.watts)} W · ${Math.round(r.voltage)} V`;
+      const lines = [
+        e.ongoing
+          ? "Still ongoing"
+          : (outage && e.end ? `Power back ${fmtWhen(e.end)} · ` : "") +
+            `Lasted ${fmtDuration(e.minutes)}` +
+            (e.kind === "brownout" && e.minVoltage != null
+              ? ` · dropped to ${Math.round(e.minVoltage)} V`
+              : ""),
+      ];
+      if (e.before) lines.push(`Before: ${w(e.before)}`);
+      if (e.after) lines.push(`When power returned: ${w(e.after)}`);
+      if (e.afterPeak)
+        lines.push(
+          `Peak in the next ${e.afterPeak.minutes} min: ${w(e.afterPeak)}` +
+            (e.afterPeak.surge ? " · ⚠ voltage surge" : ""),
+        );
+      if (e.kwhMonth != null) {
+        lines.push(
+          (e.kwhToday != null ? `Used by then: ${kwh(e.kwhToday)} kWh today · ` : "Used by then: ") +
+            `${kwh(e.kwhMonth)} kWh this month`,
+        );
+        lines.push(
+          `Estimated bill ${money(e.bill, e.currency)} · projected ${money(e.projectedBill, e.currency)}`,
+        );
+      }
       return logItem(
         outage ? "Power outage" : "Brown out",
         fmtWhen(e.start),
-        detail,
+        lines,
         outage ? "bad" : "warn",
       );
     },
