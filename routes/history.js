@@ -23,19 +23,32 @@ const wrap = (fn) => (req, res) =>
     res.status(500).json({ error: "Server error" });
   });
 
-// Created on first start so no manual migration is needed.
-db.execute(
-  `CREATE TABLE IF NOT EXISTS theft_events (
-     id int NOT NULL AUTO_INCREMENT,
-     user_id int NOT NULL,
-     device_id int NOT NULL,
-     detected_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-     detail varchar(200) DEFAULT NULL,
-     PRIMARY KEY (id),
-     KEY idx_theft_user (user_id, detected_at),
-     CONSTRAINT fk_theft_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-   )`,
-).catch((err) => console.error("theft_events table:", err.message));
+// Created on demand (and retried if it failed once), so no manual migration is needed and a
+// database that was not ready at boot does not leave the theft log broken.
+let theftTable = null;
+function ensureTheftTable() {
+  if (!theftTable)
+    theftTable = db
+      .execute(
+        `CREATE TABLE IF NOT EXISTS theft_events (
+           id int NOT NULL AUTO_INCREMENT,
+           user_id int NOT NULL,
+           device_id int NOT NULL,
+           detected_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+           detail varchar(200) DEFAULT NULL,
+           PRIMARY KEY (id),
+           KEY idx_theft_user (user_id, detected_at),
+           CONSTRAINT fk_theft_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+         )`,
+      )
+      .catch((err) => {
+        theftTable = null; // try again on the next request
+        console.error("theft_events table:", err.message);
+        throw err;
+      });
+  return theftTable;
+}
+ensureTheftTable().catch(() => {});
 
 // ---------------------------------------------------------------------------
 // Outages and brown outs. No extra table: both are read from the raw readings.
@@ -273,6 +286,7 @@ userRouter.get(
   "/theft",
   requireAuth,
   wrap(async (req, res) => {
+    await ensureTheftTable();
     const [rows] = await db.execute(
       `SELECT id, detail, UNIX_TIMESTAMP(detected_at) * 1000 AS at_ms
        FROM theft_events WHERE user_id = ? ORDER BY detected_at DESC, id DESC LIMIT 100`,
@@ -297,6 +311,7 @@ deviceRouter.post(
         .trim()
         .slice(0, 200) || null;
     const { id: deviceId, user_id: userId } = req.device;
+    await ensureTheftTable();
 
     const [[recent]] = await db.execute(
       "SELECT COUNT(*) AS n FROM theft_events WHERE user_id = ? AND detected_at > DATE_SUB(NOW(), INTERVAL ? SECOND)",
