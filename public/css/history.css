@@ -161,6 +161,64 @@
   color: var(--muted);
 }
 
+/* monthly bills */
+.hx-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+.hx-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--hx-warn);
+  border: 1px solid var(--hx-warn);
+  border-radius: 3px;
+  vertical-align: 1px;
+}
+.hx-row.live .hx-what b {
+  color: var(--ink);
+}
+.hx-test {
+  margin-top: 22px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  border: 1px dashed var(--hx-warn);
+  border-radius: 8px;
+}
+.hx-test[hidden] {
+  display: none;
+}
+.hx-test strong {
+  color: var(--hx-warn);
+}
+.hx-test-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.hx-test-btns button {
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+.hx-test-btns button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 @media (max-width: 520px) {
   .hx-row {
     grid-template-columns: 1fr auto;
@@ -176,4 +234,7 @@
   .hx-data {
     grid-template-columns: 7.2rem 1fr;
   }
+}
+.hx-text.sub {
+  color: var(--muted);
 }
