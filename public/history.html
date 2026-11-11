@@ -29,6 +29,9 @@
         <button id="tabTheft" role="tab" aria-selected="false" data-tab="theft">
           Theft log
         </button>
+        <button id="tabBills" role="tab" aria-selected="false" data-tab="bills">
+          Monthly bills
+        </button>
       </nav>
 
       <p id="hxMsg" class="error" role="alert"></p>
@@ -57,6 +60,28 @@
           Logged when the LINE meter reads noticeably more than the HOME meter
           for about 10 seconds.
         </p>
+      </section>
+
+      <section id="paneBills" role="tabpanel" aria-labelledby="tabBills" hidden>
+        <p id="billSummary" class="hx-summary"></p>
+        <div class="hx-bar">
+          <span></span>
+          <span class="hx-updated" data-for="bills" aria-live="off"></span>
+        </div>
+        <div id="billList" class="hx-log"></div>
+        <p class="hx-note">
+          Each month is saved automatically when it ends: total kWh used and
+          the bill at your rate at that time. This month is shown live.
+        </p>
+        <!-- TEMPORARY test tools: shown only while the server has BILL_TEST_TOOLS on. Remove when done. -->
+        <div id="billTest" class="hx-test" hidden>
+          <strong>Testing tools (temporary)</strong>
+          <span>Add made-up past months so you don't have to wait a month.</span>
+          <div class="hx-test-btns">
+            <button id="billTestAdd" type="button">Add a test month</button>
+            <button id="billTestClear" type="button">Clear test entries</button>
+          </div>
+        </div>
       </section>
     </main>
 
