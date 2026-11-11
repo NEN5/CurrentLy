@@ -68,7 +68,9 @@ async function loadStatus() {
   const labels = { online: "Online", offline: "Offline" };
   $("status").dataset.state = d.state;
   $("statusText").textContent = labels[d.state];
-  $("status").title = d.lastSeen
+  $("status").title = d.reason === "mains_off"
+    ? "Main power is off (the meter is not reading any supply)"
+    : d.lastSeen
     ? `Last seen ${Math.round((d.serverTime - d.lastSeen) / 1000)} seconds ago`
     : "No data received yet";
 }
@@ -509,7 +511,4 @@ $("outageOpen").addEventListener("click", () => {
 });
 $("theftOpen").addEventListener("click", () => {
   location.href = "history.html#theft";
-});
-$("billsOpen").addEventListener("click", () => {
-  location.href = "history.html#bills";
 });
