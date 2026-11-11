@@ -114,3 +114,4 @@ app.listen(PORT, "0.0.0.0", () =>
 );
 require("./services/meralcoRates").startScheduler();
 require("./services/retention").startScheduler();
+require("./services/monthlyBills").startScheduler();
