@@ -8,6 +8,8 @@ const db = require("../data/db");
 const requireAuth = require("../middleware/requireAuth");
 const { deviceAuth } = require("./phones");
 const { meralcoRate } = require("../services/defaultRate");
+const bills = require("../services/monthlyBills");
+const { computeSummary } = require("./sensorData");
 
 const DAYS = 14; // matches RETENTION_DAYS in services/retention.js (older raw readings are gone)
 const GAP_SEC = Number(process.env.OUTAGE_GAP_SEC) || 300; // no reading for this long = outage
@@ -306,6 +308,51 @@ userRouter.get(
     res.json({
       events: rows.map((r) => ({ id: r.id, at: Number(r.at_ms), detail: r.detail })),
     });
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Monthly bill log. Finished months are saved by services/monthlyBills.js; this month is worked out live.
+// ---------------------------------------------------------------------------
+userRouter.get(
+  "/bills",
+  requireAuth,
+  wrap(async (req, res) => {
+    const events = await bills.listBills(req.user.id);
+    const s = await computeSummary(req.user.id);
+    res.set("Cache-Control", "no-store");
+    res.json({
+      events,
+      current: {
+        period: bills.currentPeriod(),
+        label: bills.label(bills.currentPeriod()),
+        kwh: s.monthKwh,
+        rate: s.rate,
+        amount: s.bill,
+        projected: s.projectedBill,
+        currency: s.currency,
+      },
+      testTools: bills.TEST_TOOLS, // TEMPORARY
+    });
+  }),
+);
+
+// TEMPORARY test tools: fill the log with made-up months (marked TEST) so it can be checked without
+// waiting a month. POST adds one more past month each call; DELETE removes all test entries.
+userRouter.post(
+  "/bills/test",
+  requireAuth,
+  wrap(async (req, res) => {
+    if (!bills.TEST_TOOLS) return res.status(404).json({ error: "Not found" });
+    res.json(await bills.addTestMonth(req.user.id));
+  }),
+);
+userRouter.delete(
+  "/bills/test",
+  requireAuth,
+  wrap(async (req, res) => {
+    if (!bills.TEST_TOOLS) return res.status(404).json({ error: "Not found" });
+    res.json(await bills.clearTestMonths(req.user.id));
   }),
 );
 
