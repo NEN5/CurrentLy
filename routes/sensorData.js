@@ -3,6 +3,7 @@ const router = require("express").Router();
 const deviceRouter = require("express").Router();
 const db = require("../data/db");
 const requireAuth = require("../middleware/requireAuth");
+const { deviceAuth } = require("./phones");
 const { meralcoRate } = require("../services/defaultRate");
 
 // A device counts as online / livePower is shown while its last reading is this fresh.
@@ -136,6 +137,28 @@ async function ingest(req, res) {
   }
 }
 router.post("/", ingest);
+
+// ---------------------------------------------------------------------------
+// POST /api/device/power  {mains: true|false}   (ESP32, x-api-key)
+// The meter reports whether its PZEM is still answering, so Online/Offline follows the main supply
+// and not the Wi-Fi. mains:false -> status 'mains_off' (shown Offline at once); the next good reading
+// posted to /api/sensor-data sets it back to 'online'.
+// ---------------------------------------------------------------------------
+deviceRouter.post("/power", deviceAuth, async (req, res) => {
+  try {
+    const mains = (req.body || {}).mains;
+    if (typeof mains !== "boolean")
+      return res.status(400).json({ error: "mains must be true or false" });
+    await db.execute(
+      "UPDATE devices SET last_seen = NOW(), status = ? WHERE id = ?",
+      [mains ? "online" : "mains_off", req.device.id],
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("power report failed:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Helpers (Philippine calendar math on a UTC-shifted Date; read with getUTC*)
@@ -372,6 +395,7 @@ deviceRouter.get("/status", requireAuth.optional, async (req, res) => {
   const out = {
     state: "offline",
     online: false,
+    reason: null, // "mains_off" while the meter reports the main supply is cut
     deviceId: null,
     lastSeen: null,
     serverTime: Date.now(),
@@ -379,7 +403,7 @@ deviceRouter.get("/status", requireAuth.optional, async (req, res) => {
   try {
     if (req.user) {
       const [rows] = await db.execute(
-        `SELECT mac, UNIX_TIMESTAMP(last_seen) * 1000 AS seen_ms,
+        `SELECT mac, status, UNIX_TIMESTAMP(last_seen) * 1000 AS seen_ms,
                 TIMESTAMPDIFF(SECOND, last_seen, NOW()) AS age_s
          FROM devices WHERE user_id = ? ORDER BY last_seen DESC, id LIMIT 1`,
         [req.user.id],
@@ -388,7 +412,10 @@ deviceRouter.get("/status", requireAuth.optional, async (req, res) => {
         const r = rows[0];
         out.deviceId = r.mac;
         out.lastSeen = r.seen_ms === null ? null : Number(r.seen_ms);
-        out.online = r.age_s !== null && Number(r.age_s) <= ONLINE_WINDOW_SEC;
+        const fresh = r.age_s !== null && Number(r.age_s) <= ONLINE_WINDOW_SEC;
+        const mainsOff = r.status === "mains_off";
+        out.online = fresh && !mainsOff;
+        if (mainsOff) out.reason = "mains_off";
         out.state = out.online ? "online" : "offline";
       }
     }
