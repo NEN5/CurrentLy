@@ -2,6 +2,7 @@
 // GET /api/history/outages -> { events: [{ kind, start, end, minutes, minVoltage, ongoing, lowVoltage,
 //                                          before, after, afterPeak, kwhToday, kwhMonth, bill, projectedBill, currency }] }
 // GET /api/history/theft   -> { events: [{ id, at, detail }] }
+// GET /api/history/bills   -> { events: [{ period, label, kwh, rate, amount, currency, test }], current: {...}, testTools }
 (() => {
   const $ = (id) => document.getElementById(id);
   const token = localStorage.getItem("token");
@@ -139,10 +140,66 @@
     );
   }
 
+  // ---- monthly bills --------------------------------------------------------------------------
+  let bills = { events: [], current: null };
+  function billRow(e, live) {
+    const r = el("div", live ? "hx-row live" : "hx-row");
+    r.append(el("span", "hx-time", e.label.slice(0, 3)));
+    const what = el("div", "hx-what");
+    const title = el("b", "", e.label);
+    what.append(title);
+    if (e.test) what.append(el("span", "hx-badge", "TEST"));
+    if (live) what.append(el("span", "sub", " · so far this month"));
+    what.append(el("span", "sub", ` · ${kwh(e.kwh)} kWh at ${money(e.rate, e.currency)}/kWh`));
+    r.append(what);
+    r.append(el("span", "hx-amount", money(e.amount, e.currency)));
+    if (live && e.projected != null)
+      r.append(el("p", "hx-text sub", `Projected for the month: ${money(e.projected, e.currency)}`));
+    return r;
+  }
+  function renderBills() {
+    const { events, current } = bills;
+    const nodes = [];
+    if (current) {
+      nodes.push(el("h3", "hx-day", "This month"));
+      nodes.push(billRow(current, true));
+    }
+    if (!events.length) {
+      nodes.push(el("p", "hx-empty", "No finished months yet. A month is saved here when it ends."));
+    } else {
+      let year = null;
+      for (const e of events) {
+        const y = e.period.slice(0, 4);
+        if (y !== year) {
+          nodes.push(el("h3", "hx-day", y));
+          year = y;
+        }
+        nodes.push(billRow(e, false));
+      }
+    }
+    $("billList").replaceChildren(...nodes);
+
+    const real = events.filter((e) => !e.test);
+    const list = events.length ? events : [];
+    if (list.length) {
+      const avg = list.reduce((s, e) => s + e.amount, 0) / list.length;
+      const top = list.reduce((a, b) => (b.amount > a.amount ? b : a));
+      const c = list[0].currency;
+      $("billSummary").textContent =
+        `${plural(list.length, "month", "months")} logged` +
+        (real.length !== list.length ? ` (${list.length - real.length} test)` : "") +
+        `. Average ${money(avg, c)} a month; highest ${top.label} at ${money(top.amount, c)}.`;
+    } else {
+      $("billSummary").textContent = "No monthly bills logged yet.";
+    }
+    $("billTest").hidden = !bills.testTools;
+  }
+
   // ---- loading and self-refresh -----------------------------------------------------------------
   const kinds = {
     outages: { data: () => outages, set: (v) => (outages = v), draw: () => (summarizeOutages(), renderOutages()), list: "outageList" },
     theft: { data: () => theft, set: (v) => (theft = v), draw: () => renderTheft(), list: "theftList" },
+    bills: { data: () => bills, set: (v) => (bills = v), draw: () => renderBills(), list: "billList" },
   };
   const seen = {}; // kind -> JSON of what is on screen, so the page only redraws when something changed
   let active = "outages";
@@ -162,14 +219,14 @@
       return;
     }
     try {
-      const { events } = await API.get("/history/" + kind);
-      if (!Array.isArray(events))
+      const body = await API.get("/history/" + kind);
+      if (!Array.isArray(body.events))
         throw new Error("Could not reach the server. Check the connection and that the site points at your backend.");
       msg.textContent = "";
-      const sig = JSON.stringify(events);
+      const sig = JSON.stringify(body);
       if (sig !== seen[kind]) {
         seen[kind] = sig;
-        k.set(events);
+        k.set(kind === "bills" ? body : body.events);
         k.draw();
       }
       stamp(kind, `Updated ${clockSec(Date.now())} · refreshes automatically`, false);
@@ -197,6 +254,7 @@
       b.setAttribute("aria-selected", String(b.dataset.tab === name));
     $("paneOutages").hidden = name !== "outages";
     $("paneTheft").hidden = name !== "theft";
+    $("paneBills").hidden = name !== "bills";
     history.replaceState(null, "", "#" + name);
     if (seen[name] === undefined) $(kinds[name].list).replaceChildren(el("p", "hx-empty", "Loading…"));
     refresh(name);
@@ -205,5 +263,23 @@
   for (const b of document.querySelectorAll(".hx-tabs button"))
     b.addEventListener("click", () => showTab(b.dataset.tab));
 
-  showTab(location.hash === "#theft" ? "theft" : "outages");
+  // TEMPORARY test tools (see services/monthlyBills.js): add / clear made-up months.
+  async function billTest(method, btn) {
+    const all = [$("billTestAdd"), $("billTestClear")];
+    all.forEach((b) => (b.disabled = true));
+    try {
+      const r = await API.req(method, "/history/bills/test");
+      if (method === "POST" && r.added === null) $("hxMsg").textContent = "Test months are full (24 back).";
+      else $("hxMsg").textContent = "";
+      delete seen.bills;
+      await refresh("bills");
+    } catch (err) {
+      $("hxMsg").textContent = err.message;
+    }
+    all.forEach((b) => (b.disabled = false));
+  }
+  $("billTestAdd").addEventListener("click", () => billTest("POST"));
+  $("billTestClear").addEventListener("click", () => billTest("DELETE"));
+
+  showTab(["theft", "bills"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "outages");
 })();
