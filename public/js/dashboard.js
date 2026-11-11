@@ -510,3 +510,6 @@ $("outageOpen").addEventListener("click", () => {
 $("theftOpen").addEventListener("click", () => {
   location.href = "history.html#theft";
 });
+$("billsOpen").addEventListener("click", () => {
+  location.href = "history.html#bills";
+});
